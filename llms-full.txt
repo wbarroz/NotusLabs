@@ -1,0 +1,4929 @@
+# Introduction
+URL: /docs/api-reference
+Source: /app/apps/docs/content/docs/api-reference/index.mdx
+
+
+
+***
+
+## title: Introduction
+
+# Notus API
+
+Build Web3 applications with smart wallets, compliance, and seamless fiat integration. Everything you need to onboard users and manage digital assets.
+
+## What You Can Build
+
+* **Social Login Wallets**: ERC-4337 smart wallets with Google, Apple ID, and Web3Auth integration
+* **Gasless DeFi Apps**: Token swaps, cross-chain transfers, and batch transactions without gas fees
+* **Liquidity Pool Platforms**: Uniswap v3 position management, fee collection, and yield strategies
+* **Compliant Exchanges**: KYC/AML verification with fiat on/off-ramps and regulatory compliance
+* **Analytics & Monitoring**: Real-time transaction tracking, portfolio insights, and webhook automation
+* **Custom User Operations**: Advanced account abstraction with session keys and automated workflows
+
+## Next Steps
+
+* 🚀 [Quickstart Guide](/docs/guides/quickstart) - Set up your first project in under 10 minutes
+* 💸 [Send Gasless Transactions](/docs/guides/gasless-transaction-abstraction/send-transaction) - Your first token transfer
+* 🔄 [Token Swaps](/docs/guides/defi-swap) - Enable DeFi trading in your app
+
+
+# Overview
+URL: /docs/guides/analytics-overview
+Source: /app/apps/docs/content/docs/guides/analytics-overview.mdx
+
+
+
+***
+
+## title: Overview
+
+Understanding blockchain interactions is essential for optimizing user experience, improving security, and making data-driven decisions. However, extracting and analyzing blockchain data can be complex and resource-intensive. **The Notus API Analytics module** provides a **comprehensive dashboard** that offers deep insights into user activity, transaction volume, and liquidity, allowing businesses to monitor and optimize their Web3 operations effectively.
+
+With **Analytics**, developers and businesses can:
+
+* **Monitor Key Metrics** – Track **transaction volume, active users, revenue, and most traded assets** in real time.
+* **Gain Actionable Insights** – Understand **user behavior, liquidity trends, and engagement patterns** to refine business strategies.
+* **Ensure Compliance & Security** – Access structured data on **onchain activity** to meet compliance requirements and detect anomalies.
+
+By offering a **unified view of blockchain interactions**, the **Notus API Analytics module** enables fintechs, exchanges, and Web3 platforms to **enhance decision-making, improve operational efficiency, and drive growth** with reliable onchain data.
+
+
+# Custom User Operation
+URL: /docs/guides/custom-user-operation
+Source: /app/apps/docs/content/docs/guides/custom-user-operation.mdx
+
+Build and execute a sequence of contract calls in a single UserOperation.
+
+***
+
+title: Custom User Operation
+description: Build and execute a sequence of contract calls in a single UserOperation.
+--------------------------------------------------------------------------------------
+
+### Overview
+
+Use this guide to create a simple custom UserOperation that transfers tokens from your smart wallet to a recipient. You'll then sign and execute it.
+
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+## Steps
+
+<Steps>
+  <Step>
+    ### Install dependencies and initialize Wallet Account
+
+    Install viem to sign messages and interact with the blockchain, then initialize your wallet account.
+
+    ```package-install
+    viem
+    ```
+
+    Use your private key to initialize a wallet account.
+
+    ```js
+    import { privateKeyToAccount } from 'viem/accounts'
+
+    const BASE_URL = 'https://api.notus.team/api/v1'
+    const API_KEY = '<api-key>'
+
+    const USDC_POLYGON = '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359'
+
+    const privateKey = '0x<private-key>'
+    const account = privateKeyToAccount(privateKey)
+    ```
+  </Step>
+
+  <Step>
+    ### Register a Smart Wallet Address
+
+    Register and retrieve the smart wallet address used for Account Abstraction.
+
+    ```js
+    async function setupSmartWallet() {
+      const FACTORY_ADDRESS = '0x0000000000400CdFef5E2714E63d8040b700BC24'
+      const externallyOwnedAccount = account.address
+
+      const res = await fetch(`${BASE_URL}/wallets/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': API_KEY,
+        },
+        body: JSON.stringify({
+          externallyOwnedAccount,
+          factory: FACTORY_ADDRESS,
+          salt: '0',
+        }),
+      })
+
+      if (!res.ok) return
+
+      const data = await res.json()
+      return data.wallet.accountAbstraction
+    }
+    ```
+
+    <Callout>
+      The smart wallet is deployed automatically on the first onchain transaction via a UserOperation.
+    </Callout>
+  </Step>
+
+  <Step>
+    ### Create a Custom User Operation
+
+    Compose a single ERC-20 transfer operation. In this example, we transfer 5 USDC on Polygon to a recipient.
+
+    ```js
+    const smartWalletAddress = await setupSmartWallet()
+
+    const customUserOperationResponse = await fetch(`${BASE_URL}/crypto/custom-user-operation`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+      },
+      body: JSON.stringify({
+        chainId: 137, // Polygon
+        walletAddress: smartWalletAddress,
+        payGasFeeToken: USDC_POLYGON, // token used to pay fees
+        operations: [
+          {
+            address: USDC_POLYGON, // ERC-20 token address
+            methodSignature: 'function transfer(address to, uint256 amount)',
+            arguments: [
+              '0x<recipient-address>', // recipient
+              '5000000', // 5 USDC (6 decimals)
+            ],
+          },
+        ],
+        metadata: { useCase: 'custom-flow', requestId: 'req_123' },
+      }),
+    }).then((r) => r.json())
+
+    const { userOperation } = customUserOperationResponse
+    console.log('userOperationHash:', userOperation.userOperationHash)
+    ```
+
+    <Callout>
+      * <b>payGasFeeToken</b> must be a token the smart wallet holds; it pays partner fees and gas.
+        <br />- For a native token transfer, omit <code>methodSignature</code> and set only <code>address</code> (recipient) and <code>value</code> (in wei).
+    </Callout>
+
+    **Example: Native Token Transfer**
+
+    ```js
+    const nativeTransferResponse = await fetch(`${BASE_URL}/crypto/custom-user-operation`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+      },
+      body: JSON.stringify({
+        chainId: 137, // Polygon
+        walletAddress: smartWalletAddress,
+        payGasFeeToken: USDC_POLYGON, // token used to pay gas fees (separate from the native token being transferred)
+        operations: [
+          {
+            address: '0xd8da6bf26964af9d7eed9e03e53415d37aa96045', // recipient address
+            value: '1000000000000000000', // 1 MATIC in wei (18 decimals)
+          },
+        ],
+        metadata: { useCase: 'native-transfer', requestId: 'req_124' }, // optional metadata for tracking transactions
+      }),
+    }).then((r) => r.json())
+    ```
+  </Step>
+
+  <Step>
+    ### Execute the User Operation
+
+    Sign the returned <code>userOperationHash</code> with the EOA, then queue execution.
+
+    ```js
+    const signature = await account.signMessage({
+      message: { raw: userOperation.userOperationHash },
+    })
+
+    const executionResponse = await fetch(`${BASE_URL}/crypto/execute-user-op`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+      },
+      body: JSON.stringify({
+        userOperationHash: userOperation.userOperationHash,
+        signature,
+      }),
+    }).then((r) => r.json())
+
+    console.log(executionResponse)
+    ```
+
+    <Callout>
+      If your wallet uses EIP-7702, include the <code>authorization</code> signature when executing.
+    </Callout>
+  </Step>
+</Steps>
+
+
+# Cross-Chain Swap Guide
+URL: /docs/guides/defi-cross-chain-swap
+Source: /app/apps/docs/content/docs/guides/defi-cross-chain-swap.mdx
+
+Step-by-step guide to swapping tokens across different chains using the Notus API.
+
+***
+
+title: Cross-Chain Swap Guide
+description: Step-by-step guide to swapping tokens across different chains using the Notus API.
+-----------------------------------------------------------------------------------------------
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+## Steps
+
+<Steps>
+  <Step>
+    ### Create a directory
+
+    ```
+    mkdir my-create-cross-chain-swap
+    cd my-create-cross-chain-swap
+    touch index.js
+    ```
+  </Step>
+
+  <Step>
+    ### Init project
+
+    ```package-install
+    npm init -y
+    ```
+  </Step>
+
+  <Step>
+    ### Install <code>viem</code>
+
+    We’ll use viem, a library for blockchain interactions, to simplify our integration. Install it by running:
+
+    ```package-install
+    npm i viem
+    ```
+  </Step>
+
+  <Step>
+    ### Initialize Wallet Account
+
+    Use your private key to initialize a wallet account. This will allow you to sign messages and interact with the blockchain.
+
+    ```js
+    import { privateKeyToAccount } from 'viem/accounts'
+
+    const BASE_URL = "https://api.notus.team/api/v1"
+    const API_KEY = "<api-key>"
+
+    const USDC_POLYGON = '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359'
+    const USDC_ARBITRUM = "0xaf88d065e77c8cc2239327c5edb3a432268e5831"
+
+    const privateKey = '0x<private-key>'
+    const account = privateKeyToAccount(privateKey)
+    ```
+  </Step>
+
+  <Step>
+    ### Register a Smart Wallet Address
+
+    Before initiating a cross-chain swap, register and retrieve the smart wallet address used for Account Abstraction.
+
+    ```js
+    async function main() {
+      const FACTORY_ADDRESS = "0x0000000000400CdFef5E2714E63d8040b700BC24"
+      const externallyOwnedAccount = account.address
+
+      let res = await fetch(`${BASE_URL}/wallets/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": API_KEY,
+        },
+        body: JSON.stringify({
+          externallyOwnedAccount: externallyOwnedAccount,
+          factory: FACTORY_ADDRESS,
+          salt: "0",
+        }),
+      });
+
+      if (!res?.ok) {
+        return
+      }
+
+      const response = await res.json();
+
+      const smartWalletAddress = response.wallet.accountAbstraction
+    }
+    ```
+
+    <Callout>
+      Note: At this stage, the smart wallet address is not yet deployed onchain. Deployment happens automatically with the user's first onchain transaction (e.g., swap or transfer) via a UserOperation.
+    </Callout>
+  </Step>
+
+  <Step>
+    ### Create a Cross-chain Swap Quote
+
+    Query a quote for cross-chain swaps (e.g., USDC on Arbitrum to USDC on Polygon).
+
+    ```js
+    const { data } = await fetch(`${BASE_URL}/crypto/swap`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,Step-by-step guide to swapping tokens across different chains using the Notus API.
+      },
+      body: JSON.stringify(
+        {
+          payGasFeeToken: USDC_ARBITRUM,
+          tokenIn: USDC_ARBITRUM,
+          tokenOut: USDC_POLYGON,
+          amountIn: "5",
+          walletAddress: smartWalletAddress,
+          toAddress: smartWalletAddress,
+          signerAddress: externallyOwnedAccount,
+          chainIdIn: 42161,
+          chainIdOut: 137,
+          gasFeePaymentMethod: "DEDUCT_FROM_AMOUNT",
+        }
+      ),
+    }).then((res) => res.json())
+    ```
+  </Step>
+
+  <Callout>
+    For cross-chain swaps involving a native token, use the following address as <code>tokenIn: 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee</code>. This ensures that the Notus API recognizes the asset as a native token.
+  </Callout>
+
+  <Callout>
+    Note: The <code>payGasFeeToken</code> field should contain the address of an ERC-20 token held in the smart wallet. This token will be used to pay both the partner’s <code>transactionFeePercent</code> and the gas fees for the UserOperation. In most cases, <code>payGasFeeToken</code> is the same as <code>token</code>, typically the token the user already holds in their wallet.
+  </Callout>
+
+  <Step>
+    ### Route Profile (Optional)
+
+    You can optimize your cross-chain swap quotes by specifying a `routeProfile` parameter in your request. Route profiles define the order and which quotes are returned in the array, ordered from "best" to "worst".
+
+    ```js
+    const { data } = await fetch(`${BASE_URL}/crypto/swap`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+      },
+      body: JSON.stringify({
+        // ... other parameters
+        routeProfile: "FASTEST_BRIDGE", // Optional parameter
+      }),
+    }).then((res) => res.json())
+    ```
+
+    **Available Route Profiles:**
+
+    * **`QUICKEST_QUOTE`** *(Default)*: Returns a quote as soon as one that works is found. This is the quickest endpoint as it returns the first that can be executed. If none can be executed, it returns all of them to show why they could not execute.
+
+    * **`FASTEST_BRIDGE`**: Useful only for cross-chain swaps. Returns the cross-chain route that should execute on all chains at the fastest time possible. This is a slower query, so refrain from calling it too frequently.
+
+    * **`BEST_OUTPUT`**: Aggregates multiple swap providers to find the optimal path that maximizes returns by considering the guaranteed minimum output and deducting execution fees. This is a slower query, so refrain from calling it too frequently.
+
+    <Callout type="info">
+      For cross-chain swaps, choose `FASTEST_BRIDGE` when you want the quickest execution across chains, or `BEST_OUTPUT` when you want to maximize the output amount. Use `QUICKEST_QUOTE` for immediate results.
+    </Callout>
+  </Step>
+
+  <Step>
+    ### Execute Cross-chain Swap
+
+    Once you have a quote, sign and execute the cross-chain swap operation.
+
+    ```js
+      const signature = await account.signMessage({
+        message: {
+          raw: data.quoteId,
+        },
+      })
+      
+      const { userOpHash } = await fetch(`${BASE_URL}/crypto/execute-user-op`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': API_KEY,
+        },
+        body: JSON.stringify({ signature, quoteId: data.quoteId }),
+      }).then((res) => res.json())
+
+      console.log(userOpHash)
+    ```
+  </Step>
+</Steps>
+
+
+# Overview
+URL: /docs/guides/defi-overview
+Source: /app/apps/docs/content/docs/guides/defi-overview.mdx
+
+DeFi
+
+***
+
+title: Overview
+description: DeFi
+-----------------
+
+Decentralized Finance (**DeFi**) provides access to **swaps, lending, staking, and liquidity pools**, but integrating these services into applications can be complex, requiring interaction with multiple protocols, networks, and liquidity sources. The **Notus API DeFi module** simplifies this process by offering a unified interface for seamless onchain financial operations.
+
+With **DeFi integration**, developers can:
+
+* **Enable Cross-Chain Swaps** – Perform **frictionless asset swaps** across multiple blockchains **without requiring manual bridges**.
+* **Access Staking & Lending Strategies** – Integrate **automated yield-generating** opportunities directly into applications via API.
+* **Manage Liquidity Pools** – Create, deposit, and manage liquidity **without complex smart contract interactions**.
+
+By abstracting the complexities of DeFi interactions, **the Notus API empowers fintechs, exchanges, and Web3 platforms to offer a seamless, high-performance financial experience**, making decentralized trading and yield generation more accessible to users.
+
+
+# Swap Guide
+URL: /docs/guides/defi-swap
+Source: /app/apps/docs/content/docs/guides/defi-swap.mdx
+
+Step-by-step guide to swapping tokens with the Notus API.
+
+***
+
+title: Swap Guide
+description: Step-by-step guide to swapping tokens with the Notus API.
+----------------------------------------------------------------------
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+## Steps
+
+<Steps>
+  <Step>
+    ### Create a directory
+
+    ```
+    mkdir my-create-swap
+    cd my-create-swap
+    touch index.js
+    ```
+  </Step>
+
+  <Step>
+    ### Init project
+
+    ```package-install
+    npm init -y
+    ```
+  </Step>
+
+  <Step>
+    ### Install <code>viem</code>
+
+    We’ll use viem, a library for blockchain interactions, to simplify our integration. Install it by running:
+
+    ```package-install
+    npm i viem
+    ```
+  </Step>
+
+  <Step>
+    ### Initialize Wallet Account
+
+    Use your private key to initialize a wallet account. This will allow you to sign messages and interact with the blockchain.
+
+    ```js
+    import { privateKeyToAccount } from 'viem/accounts'
+
+    const BASE_URL = "https://api.notus.team/api/v1"
+    const API_KEY = "<api-key>"
+
+    const UNI_POLYGON = '0xb33eaad8d922b1083446dc23f610c2567fb5180f'
+    const USDC_POLYGON = '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359' 
+
+    const privateKey = '0x<private-key>'
+    const account = privateKeyToAccount(privateKey)
+    ```
+  </Step>
+
+  <Step>
+    ### Register a Smart Wallet Address
+
+    Before initiating a swap, register and retrieve the smart wallet address used for Account Abstraction.
+
+    ```js
+    async function main() {
+      const FACTORY_ADDRESS = "0x0000000000400CdFef5E2714E63d8040b700BC24"
+      const externallyOwnedAccount = account.address
+
+      let res = await fetch(`${BASE_URL}/wallets/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": API_KEY,
+        },
+        body: JSON.stringify({
+          externallyOwnedAccount: externallyOwnedAccount,
+          factory: FACTORY_ADDRESS,
+          salt: "0",
+        }),
+      });
+
+      if (!res?.ok) {
+        return
+      }
+
+      const response = await res.json();
+
+      const smartWalletAddress = response.wallet.accountAbstraction
+    }
+    ```
+
+    <Callout>
+      Note: At this stage, the smart wallet address is not yet deployed onchain. Deployment happens automatically with the user's first onchain transaction (e.g., swap or transfer) via a UserOperation.
+    </Callout>
+  </Step>
+
+  <Step>
+    ### Create a Swap Quote
+
+    Query a swap quote for token swaps on the same chain (e.g., USDC to UNI on Polygon).
+
+    ```js
+    const { data } = await fetch(`${BASE_URL}/crypto/swap`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+      },
+      body: JSON.stringify(
+        {
+          payGasFeeToken: USDC_POLYGON,
+          tokenIn: USDC_POLYGON,
+          tokenOut: UNI_POLYGON,
+          amountIn: "5",
+          walletAddress: smartWalletAddress,
+          toAddress: smartWalletAddress,
+          signerAddress: externallyOwnedAccount,
+          chainIdIn: 137,
+          chainIdOut: 137,
+          gasFeePaymentMethod: "DEDUCT_FROM_AMOUNT",
+        }
+      ),
+    }).then((res) => res.json())
+    ```
+  </Step>
+
+  <Callout>
+    If you are swapping from a native token (e.g., ETH, BNB, AVAX), use the following address as <code>tokenIn: 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee</code>. This ensures that the Notus API recognizes the asset as a native token.
+  </Callout>
+
+  <Callout>
+    Note: The <code>payGasFeeToken</code> field should contain the address of an ERC-20 token held in the smart wallet. This token will be used to pay both the partner’s <code>transactionFeePercent</code> and the gas fees for the UserOperation. In most cases, <code>payGasFeeToken</code> is the same as <code>token</code>, typically the token the user already holds in their wallet.
+  </Callout>
+
+  <Step>
+    ### Route Profile (Optional)
+
+    You can optimize your swap quotes by specifying a `routeProfile` parameter in your request. Route profiles define the order and which quotes are returned in the array, ordered from "best" to "worst".
+
+    ```js
+    const { data } = await fetch(`${BASE_URL}/crypto/swap`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+      },
+      body: JSON.stringify({
+        // ... other parameters
+        routeProfile: "BEST_OUTPUT", // Optional parameter
+      }),
+    }).then((res) => res.json())
+    ```
+
+    **Available Route Profiles:**
+
+    * **`QUICKEST_QUOTE`** *(Default)*: Returns a quote as soon as one that works is found. This is the quickest endpoint as it returns the first that can be executed. If none can be executed, it returns all of them to show why they could not execute.
+
+    * **`BEST_OUTPUT`**: Aggregates multiple swap providers to find the optimal path that maximizes returns by considering the guaranteed minimum output and deducting execution fees. This is a slower query, so refrain from calling it too frequently.
+
+    <Callout type="info">
+      Choose `QUICKEST_QUOTE` for fast responses when you need immediate results, or `BEST_OUTPUT` when you want to maximize the output amount and don't mind the additional processing time.
+    </Callout>
+  </Step>
+
+  <Step>
+    ### Execute Swap
+
+    Once you have a quote, sign and execute the swap operation.
+
+    ```js
+      const signature = await account.signMessage({
+        message: {
+          raw: data.quoteId,
+        },
+      })
+      
+      const { userOpHash } = await fetch(`${BASE_URL}/crypto/execute-user-op`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': API_KEY,
+        },
+        body: JSON.stringify({ signature, quoteId: data.quoteId }),
+      }).then((res) => res.json())
+
+      console.log(userOpHash)
+    ```
+  </Step>
+</Steps>
+
+
+# Introduction
+URL: /docs/guides
+Source: /app/apps/docs/content/docs/guides/index.mdx
+
+Introducing Notus API
+
+***
+
+title: Introduction
+description: Introducing Notus API
+----------------------------------
+
+The **Notus API** is a powerful and streamlined platform for building applications with **account abstraction**, allowing developers to integrate advanced blockchain features without the technical complexity of smart contracts.
+
+With support for **smart wallets, gasless transactions, cross-chain swaps, social login, real-time webhooks, and detailed transaction history**, the Notus API enables fintechs, exchanges, and Web3 platforms to scale their products securely and efficiently.
+
+## Key features
+
+**Account Abstraction**
+
+* Smart Wallets & Authentication
+  * Generate and manage [ERC-4337 smart wallets](/docs/guides/smart-wallets/overview).
+  * Enable [social login](/docs/guides/authentication/overview) with Google, Apple ID, and other providers.
+* Gasless & Transaction Abstraction
+  * Allow users to [send gasless transactions](/docs/guides/gasless-transaction-abstraction/send-transaction) without holding native tokens.
+  * Execute [batch operations](/docs/api-reference/user-operations/CreateBatchOperationController_createBatchOperation_v1) for multiple transactions in a single operation.
+
+**DeFi**
+
+* Perform [swap and cross-chain swaps](/docs/guides/defi-swap) without the need for manual bridges.
+* Manage [liquidity pools](/docs/api-reference/liquidity-pools/CreateLiquidityController_handle_v1) with automated yield generation.
+* Access comprehensive [DeFi operations](/docs/guides/defi-overview) including staking and lending strategies.
+
+**KYC & Ramp**
+
+* Complete [KYC verification](/docs/guides/kyc-quickstart) for regulatory compliance and fraud prevention.
+* Enable [fiat deposits and withdrawals](/docs/guides/ramp-overview) with local payment methods and automatic stablecoin settlements.
+
+**Analytics & Monitoring**
+
+* Access [comprehensive analytics](/docs/guides/analytics-overview) with real-time insights into transaction volume, active users, and liquidity trends.
+
+**Webhooks & Automation**
+
+* Receive [real-time blockchain event notifications](/docs/guides/webhook-overview).
+* Set up automated workflows with [webhook signatures](/docs/guides/webhook-signature) for secure event handling.
+
+## Chains supported
+
+<ChainsSupported />
+
+## LLMs.txt Standard
+
+We support the [LLMs.txt standard](/llms-full.txt), providing structured documentation that's optimized for large language models. This enables AI systems to better understand and interact with our API documentation, making it easier to get accurate assistance with Notus API integration.
+
+## Support & Feedback
+
+Got a question, suggestion, issue, or idea? We’d love to hear from you. Here are the channels to reach our team:
+
+* Email us at [dev@notus.team](mailto:dev@notus.team)
+
+## Getting Started
+
+<Cards>
+  <Card title="Create an Account" href="/docs/guides/quickstart" external={false}>
+    Sign up and get your credentials to access the API.
+  </Card>
+
+  <Card title="Create a Smart Wallet" href="/docs/guides/authentication/web3auth" external={false}>
+    Start by creating a smart wallet with social login.
+  </Card>
+
+  <Card title="Send Your First Transaction" href="/docs/guides/gasless-transaction-abstraction/send-transaction" external={false}>
+    Step-by-step guide to transferring tokens with the Notus API.
+  </Card>
+
+  <Card title="Implement Webhooks" href="/docs/guides/webhook-overview" external={false}>
+    Set up real-time notifications to monitor transactions and contract interactions.
+  </Card>
+</Cards>
+
+
+# Introduction
+URL: /docs/guides/introduction-account-abstraction
+Source: /app/apps/docs/content/docs/guides/introduction-account-abstraction.mdx
+
+Intro to Account Abstraction
+
+***
+
+title: Introduction
+description: Intro to Account Abstraction
+-----------------------------------------
+
+## Account Abstraction
+
+Building seamless blockchain experiences is hard. Most apps today require users to:
+
+* Create wallets and store seed phrases
+* Buy native tokens just to pay for gas
+* Manually approve every transaction
+
+These steps create friction and block mainstream adoption.
+
+The **Account Abstraction product** in the Notus API removes these barriers by offering a complete set of tools to **create, manage, and operate [smart wallets](/docs/guides/smart-wallets/overview) with modern UX standards** — no need to deal with keys, native tokens, or smart contract complexity.
+
+With Notus Account Abstraction, you can:
+
+* **Create smart wallets on demand**, ready to use for any user or application
+* **Onboard users with social login**, removing the need for seed phrases or private key management
+* **Sponsor gas fees or allow payment in ERC-20 tokens**, like USDC or BNB
+* **Automate transaction flows** using batch operations and session keys
+
+Whether you're building a fintech product, a DeFi protocol, or a consumer Web3 app, Notus Account Abstraction helps you deliver **secure, scalable, and gas-abstracted experiences** — without reinventing your infrastructure.
+
+***
+
+## How It Works: The Technology Behind Account Abstraction
+
+Account Abstraction (AA) is an innovation in blockchain technology that simplifies and expands the usability of smart wallets.
+
+Traditionally, Ethereum has two types of accounts:
+
+* **Externally Owned Accounts (EOAs)** — Controlled by private keys, these accounts initiate transactions but offer limited flexibility.
+* **Contract Accounts (CAs)** — Smart contract-based accounts with programmable logic, but they cannot initiate transactions directly.
+
+Account Abstraction merges the flexibility of CAs with the transaction capabilities of EOAs. This allows wallets to operate with programmable logic while interacting directly with the network — no EOAs required.
+
+### Why is it important?
+
+The traditional Ethereum model requires users to:
+
+* Hold ETH to pay for gas
+* Manually sign and manage every transaction
+* Operate different accounts for custody and execution
+
+Account Abstraction removes these barriers:
+
+**Flexibility**\
+Wallets can implement features like multi-factor authentication, social recovery, or post-quantum cryptography.
+
+**Simplicity**\
+Users can pay gas fees in tokens like USDC — no need for native token.
+
+**Innovation**\
+Multiple operations can be bundled into a single transaction, unlocking new use cases like one-click DeFi actions or in-app purchases.
+
+***
+
+## ERC-4337: The Evolution of Account Abstraction
+
+[ERC-4337](https://eips.ethereum.org/EIPS/eip-4337) introduces Account Abstraction **without changing Ethereum’s consensus layer**, meaning it can be adopted on any EVM-compatible chain.
+
+Key capabilities include:
+
+* Deploying smart wallets as contract accounts
+* Using `UserOperation` objects to define user intent
+* Routing all operations through a global contract called `EntryPoint` for validation and execution
+
+***
+
+## Key Actors in ERC-4337
+
+### UserOperation
+
+A `UserOperation` is a structured object that represents a user's intent to perform an action — similar to a transaction — but with additional fields like:
+
+* Sender address (smart wallet)
+* Encoded call data
+* Signature
+* Gas fee logic
+* Paymaster data (if applicable)
+
+***
+
+### EntryPoint
+
+The `EntryPoint` is a **global contract** that validates and executes `UserOperations`. It ensures:
+
+* Operations follow proper signature and gas validation
+* Integration with Paymasters is secure
+* Execution is standardized across smart wallet implementations
+
+***
+
+### Factory
+
+The **Factory** contract creates new smart wallets deterministically using the `CREATE2` opcode. This:
+
+* Allows precomputing wallet addresses before deployment
+* Supports gas-efficient deployment on demand
+
+***
+
+### Paymaster
+
+The **Paymaster** contract allows gas fees to be:
+
+* Paid in ERC-20 tokens (e.g. USDC, BNB)
+* Fully sponsored by the application
+
+It's optional, but powerful for building better onboarding and user experiences.
+
+***
+
+### Bundler
+
+The **Bundler** is a specialized off-chain actor that:
+
+* Watches the mempool for `UserOperations`
+* Groups them into batches
+* Submits the batch to the `EntryPoint` for execution
+* Pays ETH gas fees and is reimbursed via the operations themselves
+
+Bundlers optimize for gas efficiency and ensure consistent processing of user intents.
+
+
+# KYC Quickstart
+URL: /docs/guides/kyc-quickstart
+Source: /app/apps/docs/content/docs/guides/kyc-quickstart.mdx
+
+Know Your Customer verification process
+
+***
+
+title: KYC Quickstart
+description: Know Your Customer verification process
+----------------------------------------------------
+
+# KYC (Know Your Customer)
+
+**KYC (Know Your Customer)** is a mandatory identity verification process that allows your application to know and validate the identity of your users. This process is essential for:
+
+* **Regulatory compliance**: Meeting regulatory requirements
+* **Fraud prevention**: Reducing risks of illicit activities
+* **Security**: Ensuring only legitimate users access your services
+* **Trust**: Establishing a solid foundation for financial transactions
+
+## Accepted Document Types
+
+Currently, our system accepts the following document types:
+
+### Brazilian Documents
+
+* **RG (General Registry)**: Front and back
+* **CNH (National Driver's License)**: Front and back
+* **Passport**: Main page with photo only
+
+### International Documents
+
+* **Passport**: Main page with photo only
+* **National Identity Card**: Front and back (when applicable)
+
+<Callout>
+  All documents must be **legible**, **valid**, and **not expired**. Damaged, illegible, or obscured documents may result in verification rejection.
+</Callout>
+
+<Callout>
+  Looking for a complete reference implementation? Check the FIAT + KYC Next.js example using Notus API: [FIAT + KYC Next.js example](https://github.com/notuslabs/notus-api-examples/tree/main/examples/fiat-kyc-nextjs-notus-api).
+</Callout>
+
+## KYC Verification Flow
+
+The KYC verification process follows a simple and intuitive flow:
+
+### 1. Create Verification Session
+
+First, you must create a verification session for the user:
+
+```bash
+POST kyc/individual-verification-sessions/standard
+```
+
+**Example Response:**
+
+```json
+{
+	"session": {
+		"id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+		"firstName": "João",
+		"lastName": "Silva Santos",
+		"birthDate": "15/03/1990",
+		"document": {
+			"id": "12345678901",
+			"type": null,
+			"category": "DRIVERS_LICENSE"
+		},
+		"status": "PENDING",
+		"livenessRequired": false,
+		"createdAt": "2025-01-20T10:30:00.000Z",
+		"updatedAt": null
+	},
+	"backDocumentUpload": {
+		"url": "https://s3.amazonaws.com/example-bucket",
+		"fields": {
+			"bucket": "example-bucket",
+			"X-Amz-Algorithm": "AWS4-HMAC-SHA256",
+			"X-Amz-Credential": "EXAMPLE/20250120/us-east-1/s3/aws4_request",
+			"X-Amz-Date": "20250120T103000Z",
+			"key": "documents/back-doc-12345",
+			"Policy": "eyJleHBpcmF0aW9uIjoiMjAyNS0wMS0yMFQxMDQ1OjAwWiIsImNvbmRpdGlvbnMiOltbImNvbnRlbnQtbGVuZ3RoLXJhbmdlIiwwLDI2MjE0NDAwXSxbInN0YXJ0cy13aXRoIiwiJGtleSIsImRvY3VtZW50cy9iYWNrLWRvYy0xMjM0NSJdLHsiYnVja2V0IjoiZXhhbXBsZS1idWNrZXQifV19",
+			"X-Amz-Signature": "example-signature-back-document"
+		}
+	},
+	"frontDocumentUpload": {
+		"url": "https://s3.amazonaws.com/example-bucket",
+		"fields": {
+			"bucket": "example-bucket",
+			"X-Amz-Algorithm": "AWS4-HMAC-SHA256",
+			"X-Amz-Credential": "EXAMPLE/20250120/us-east-1/s3/aws4_request",
+			"X-Amz-Date": "20250120T103000Z",
+			"key": "documents/front-doc-12345",
+			"Policy": "eyJleHBpcmF0aW9uIjoiMjAyNS0wMS0yMFQxMDQ1OjAwWiIsImNvbmRpdGlvbnMiOltbImNvbnRlbnQtbGVuZ3RoLXJhbmdlIiwwLDI2MjE0NDAwXSxbInN0YXJ0cy13aXRoIiwiJGtleSIsImRvY3VtZW50cy9mcm9udC1kb2MtMTIzNDUiXSx7ImJ1Y2tldCI6ImV4YW1wbGUtYnVja2V0In1dfQ==",
+			"X-Amz-Signature": "example-signature-front-document"
+		}
+	}
+}
+```
+
+### 2. Upload Documents
+
+Use the provided URLs to upload documents:
+
+* **Front Document**: Upload the document (front)
+* **Back Document**: Upload the back of the document (when applicable)
+
+<Callout>
+  **Important**: Uploads must be **photos of the original document**, not scanned or digitized copies. The document must be well-lit, legible, and without reflections.
+</Callout>
+
+<Callout>
+  Upload URLs expire in **15 minutes**. Make sure to upload within this period.
+</Callout>
+
+### 3. Finalize Process
+
+After uploading the documents, finalize the process:
+
+```bash
+POST /kyc/individual-verification-sessions/standard/:sessionId/process
+```
+
+### 4. Check Status
+
+Monitor the verification status:
+
+```bash
+GET /kyc/individual-verification-sessions/standard/:sessionId
+```
+
+<Callout>
+  Using React or React Native? You can embed the liveness flow with our SDKs:
+
+  * React: see [/docs/sdks/react](/docs/sdks/react)
+  * Expo/React Native: see [/docs/sdks/expo](/docs/sdks/expo)
+</Callout>
+
+## Verification Status
+
+The verification process can have the following statuses:
+
+| Status      | Description                                      |
+| ----------- | ------------------------------------------------ |
+| `PENDING`   | Session created, waiting for document upload     |
+| `VERIFYING` | Documents being analyzed by the system           |
+| `COMPLETED` | Verification approved successfully               |
+| `FAILED`    | Verification rejected or error during processing |
+| `EXPIRED`   | Session expired                                  |
+
+### Detailed Status
+
+#### `COMPLETED`
+
+* ✅ Valid and legible documents
+* ✅ Consistent information
+* ✅ User approved for transactions
+* ✅ Returns `individualId` required for FIAT ramp operations
+
+#### `FAILED`
+
+* ❌ Illegible or damaged document
+* ❌ Inconsistent information
+* ❌ Expired document
+* ❌ Document not accepted
+* ❌ Low quality photo or with reflections
+* ❌ Digitized or scanned copy (must be photo of original)
+* ⚠️ Technical error during processing
+* ⚠️ Temporary system issue
+* ⚠️ Can be retried (with other document photos)
+
+## Individual ID
+
+When the verification status is `COMPLETED`, the response will include an `individualId`:
+
+```json
+{
+  "session": {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "status": "COMPLETED",
+    "individualId": "ind_1234567890abcdef"
+  }
+}
+```
+
+<Callout>
+  **Important**: The `individualId` is **required** for all FIAT ramp operations (deposits and withdrawals). Keep this ID to use in ramp requests.
+</Callout>
+
+## Flow Diagram
+
+![KYC Sequence Diagram](/kyc/kyc-sequence.png)
+
+## Next Steps
+
+After KYC approval, your user will be ready to:
+
+* Perform FIAT deposits and withdrawals (using the `individualId`)
+
+<Callout>
+  **Monthly limit**: After KYC approval, the user will have a monthly limit of approximately **$9,000 USD** for FIAT ramp operations.
+</Callout>
+
+<Callout>
+  **Next step**: With the `individualId` in hand, you can proceed to FIAT ramp operations. Check the Ramp documentation for more details.
+</Callout>
+
+<Callout>
+  The KYC process is **mandatory** for all FIAT ramp operations. Without KYC approval, users will not be able to perform deposits or withdrawals.
+</Callout>
+
+
+# Overview
+URL: /docs/guides/liquidity-pools-overview
+Source: /app/apps/docs/content/docs/guides/liquidity-pools-overview.mdx
+
+Liquidity Pools
+
+***
+
+title: Overview
+description: Liquidity Pools
+----------------------------
+
+Liquidity pools enable decentralized trading by pooling tokens in smart contracts. LPs deposit assets and earn a share of trading fees; returns vary with market moves due to impermanent loss. Notus currently supports Uniswap v3 only.
+
+With Liquidity Pools, you can:
+
+* Create new Uniswap v3 positions (set price range and fee tier)
+* Automatically create the Uniswap v3 pool contract if it doesn't exist; otherwise add to the existing pool
+* Increase/decrease liquidity on an existing position by amounts or by percentage (reduce only)
+* Get required token amounts for a target budget and price range
+* Collect accrued fees from positions
+* Discover pools and fetch details plus historical stats
+
+### Key concepts
+
+* **Concentrated liquidity (Uniswap v3)**: Positions span price ranges; fees accrue within those bands.
+* **Position NFT**: Identifies the Uniswap v3 position you modify.
+* **Impermanent loss**: Price divergence can reduce LP value versus simply holding assets.
+
+<Callout>
+  Liquidity provision carries market risk (including impermanent loss). Validate quotes and slippage. Notus does not custody funds; assets stay under your wallet's control.
+</Callout>
+
+### Next steps
+
+* Get started: [Liquidity Pools Quickstart](/docs/guides/liquidity-pools-quickstart)
+* Explore swaps and routing: [DeFi Swap](/docs/guides/defi-swap) and [Swap Providers](/docs/guides/swap-providers)
+* Monitor your onchain activity: [Analytics Overview](/docs/guides/analytics-overview)
+* Automate events and alerts: [Webhook Overview](/docs/guides/webhook-overview)
+
+
+# Liquidity Pools Quickstart
+URL: /docs/guides/liquidity-pools-quickstart
+Source: /app/apps/docs/content/docs/guides/liquidity-pools-quickstart.mdx
+
+Get started with Uniswap v3 liquidity provision using Notus API
+
+***
+
+title: Liquidity Pools Quickstart
+description: Get started with Uniswap v3 liquidity provision using Notus API
+----------------------------------------------------------------------------
+
+# Liquidity Pools Quickstart
+
+**Liquidity Pools** allow you to provide liquidity to decentralized exchanges and earn trading fees. This guide shows you how to create your first Uniswap v3 liquidity position using the Notus API.
+
+With Notus Liquidity Pools, you can:
+
+* **Create new positions** with custom price ranges and fee tiers
+* **Add liquidity to existing pools** seamlessly
+* **Earn trading fees** from your liquidity positions
+
+<Callout>
+  **Currently supported**: Uniswap v3 on Polygon network only.
+</Callout>
+
+**Estimated time to complete: \< 5 minutes**
+
+## Prerequisites
+
+Before you start, make sure you have:
+
+<Cards>
+  <Card title="Notus API Project" href="/docs/guides/quickstart" external={false}>
+    A Notus project with an API key for authentication
+  </Card>
+
+  <Card title="Account Abstraction Wallet" href="/docs/guides/smart-wallets/overview" external={false}>
+    An ERC-4337 or EIP-7702 compatible wallet address in your project
+  </Card>
+</Cards>
+
+### Example Tokens
+
+For this guide, we'll use tokens on **Polygon network** (Chain ID: `137`):
+
+| Token    | Address                                      | Description |
+| -------- | -------------------------------------------- | ----------- |
+| **USDC** | `0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174` | USD Coin    |
+| **USDT** | `0xc2132D05D31c914a87C6611C10748AEb04B58e8F` | USDT        |
+
+<Callout>
+  **Token Support**: These are example tokens for this guide. You can use any supported token pairs - verify token support using the `/tokens` endpoint. Ensure your wallet has sufficient balances of both tokens you want to provide as liquidity.
+</Callout>
+
+## Operation Flow
+
+The liquidity provision process involves three simple steps:
+
+1. **Calculate token amounts** for your price range and budget
+2. **Create the liquidity position** with the calculated amounts
+3. **Execute the transaction** by signing and submitting
+
+### 1. Calculate Required Token Amounts
+
+Before providing liquidity, you need to know how much of each token is required for your chosen price range and budget. This endpoint calculates the optimal token distribution.
+
+```bash
+curl -X GET \
+  "https://api.notus.team/api/v1/liquidity/amounts\
+?chainId=137\
+&token0=0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174\
+&token1=0xc2132D05D31c914a87C6611C10748AEb04B58e8F\
+&token0MaxAmount=200\
+&token1MaxAmount=300\
+&poolFeePercent=0.01\
+&minPrice=0.98\
+&maxPrice=1.02\
+&payGasFeeToken=0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174\
+&gasFeePaymentMethod=ADD_TO_AMOUNT" \
+  -H "x-api-key: ${API_KEY}"
+```
+
+```typescript
+const getTokenAmounts = async () => {
+  const params = new URLSearchParams({
+    chainId: '137',
+    token0: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',
+    token1: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F',
+    token0MaxAmount: 200,
+    token1MaxAmount: 300,
+    poolFeePercent: '0.01',
+    minPrice: '0.98',
+    maxPrice: '1.02',
+    payGasFeeToken: '0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc',
+    gasFeePaymentMethod: 'ADD_TO_AMOUNT'
+  });
+
+  const response = await fetch(`https://api.notus.team/api/v1/liquidity/amounts?${params}`, {
+    method: 'GET',
+    headers: {
+      'x-api-key': API_KEY,
+      'Content-Type': 'application/json'
+    }
+  });
+
+  const data = await response.json();
+  return data;
+};
+```
+
+**Parameters:**
+
+* `chainId`: Network ID (Polygon = `137`)
+* `token0`: First token address (UDSC = `0x2791...a84174`)
+* `token1`: Second token address (USDT = `0xc213...B58e8F`)
+* `token0MaxAmount` / `token1MaxAmount`: Maximum amount of each token you have, or will have. These are the two upper bounds and the API return an estimate for each option.
+* `poolFeePercent`: Uniswap v3 fee tier (`0.01`, `0.05`, `0.3`, or `1`)
+* `minPrice` / `maxPrice`: Your desired price range (expressed as the ratio of token1/token0)
+* `payGasFeeToken`: Token to use for gas fees
+* `gasFeePaymentMethod`: How to handle gas fees (`ADD_TO_AMOUNT` or `DEDUCT_FROM_AMOUNT`)
+
+**Example Response:**
+
+```json
+{
+  "poolPrice": "0.999782",
+  "amounts": {
+    "token0MaxAmount": {
+      "token0Amount": "200",
+      "token1Amount": "199.59920435476736768744"
+    },
+    "token1MaxAmount": {
+      "token0Amount": "300.60240066566637006887",
+      "token1Amount": "300"
+    }
+  }
+}
+```
+
+<Callout>
+  **Price Definition**: Price is calculated as `token1 / token0`. Ensure `minPrice < maxPrice` or you'll receive a `BadPriceRangeException`.
+</Callout>
+
+### 2. Create Liquidity Position
+
+Now create your liquidity position using the calculated amounts from step 1. This will prepare the transaction for execution.
+
+```bash
+POST /api/v1/liquidity/create
+```
+
+**Request:**
+
+```json
+{
+  "walletAddress": "0x6e397ddf51d9f15dbe0414538e7529f51f2e5464",
+  "toAddress": "0x6e397ddf51d9f15dbe0414538e7529f51f2e5464",
+  "chainId": 137,
+  "payGasFeeToken": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+  "gasFeePaymentMethod": "ADD_TO_AMOUNT",
+  "token0": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+  "token1": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
+  "poolFeePercent": 0.01,
+  "token0Amount": "200",
+  "token1Amount": "199.59920435476736768744",
+  "minPrice": 0.98,
+  "maxPrice": 1.02,
+  "slippage": 1,
+  "metadata": {
+    "type": "POOL"
+  }
+}
+```
+
+**Parameters:**
+
+* `walletAddress`: Your account abstraction wallet address
+* `toAddress`: Recipient address (usually same as walletAddress)
+* `token0Amount` / `token1Amount`: Amounts from step 1 calculation
+* `slippage`: Maximum price movement tolerance (1 = 1%)
+* `gasFeePaymentMethod`: `ADD_TO_AMOUNT` or `DEDUCT_FROM_AMOUNT`
+* `metadata`: Optional metadata for tracking
+
+**Response:**
+
+```json
+{
+  "operation": {
+    "userOperationHash": "0x592b6d58aea182a9e4bfb58c93999b5b01bb465dfeda3867e364ee933660feb1",
+    "walletAddress": "0xcdb6d29a5f2f8d56af07588f5bea0e500b72548a",
+    "expiresAt": "2025-08-26T17:49:38.000Z",
+    "chain": {
+      "id": 137,
+      "name": "Polygon",
+      "logo": "https://assets.coingecko.com/coins/images/4713/standard/polygon.png?1698233745",
+      "explorer": {
+        "name": "PolygonScan",
+        "url": "https://polygonscan.com"
+      }
+    },
+    "amounts": [
+      {
+        "token": {
+          "name": "USD Coin",
+          "address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+          "symbol": "USDC",
+          "decimals": 6,
+          "logoURL": "https://coin-images.coingecko.com/coins/images/6319/large/USD_Coin_icon.png"
+        },
+        "amount": "200",
+        "amountIn": null
+      },
+      {
+        "token": {
+          "name": "(PoS) Tether USD",
+          "address": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
+          "symbol": "USDT",
+          "decimals": 6,
+          "logoURL": "https://coin-images.coingecko.com/coins/images/35023/large/USDT.png"
+        },
+        "amount": "199.458201",
+        "amountIn": null
+      }
+    ],
+    "liquidityProvider": "UNISWAP_V3",
+    "nftAddress": "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
+    "metadata": {
+      "type": "POOL"
+    }
+  }
+}
+```
+
+**Important Notes:**
+
+* **Minimum slippage**: Must be at least 0.5 (where 1 = 1%)
+* **Gas fee deduction**: If using `DEDUCT_FROM_AMOUNT`, the `payGasFeeToken` must be either `token0` or `token1`
+* **Position NFT**: The `nftAddress` represents your liquidity position as an NFT
+
+<Callout>
+  **Quote Expiration**: The `userOperationHash` expires at the time specified in `expiresAt`. Execute the transaction before this deadline.
+</Callout>
+
+### 3. Execute the User Operation
+
+Finally, sign and execute the transaction to complete your liquidity provision.
+
+```bash
+POST /api/v1/crypto/execute-user-op
+```
+
+**Request:**
+
+```json
+{
+  "userOperationHash": "0x592b6d58aea182a9e4bfb58c93999b5b01bb465dfeda3867e364ee933660feb1",
+  "signature": "0x1b2c3d4e5f6789abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+}
+```
+
+**Response:**
+
+```json
+{
+  "userOperationHash": "0x592b6d58aea182a9e4bfb58c93999b5b01bb465dfeda3867e364ee933660feb1",
+  "estimatedExecutionTime": "2025-08-26T17:45:41.406Z"
+}
+```
+
+**Execution Steps:**
+
+1. **Sign the userOperationHash** with the private key of your `walletAddress` owner
+2. **Submit before expiration** - Check the `expiresAt` timestamp from step 2
+3. **Wait for execution** - The API returns an estimated execution time
+4. **Monitor transaction** - Use the `userOpHash` to track progress
+
+**Response Fields:**
+
+* `userOperationHash`: Unique identifier for your transaction
+* `estimatedExecutionTime`: When the transaction is expected to be processed
+
+<Callout>
+  **Success**: Once executed, your liquidity position is active and earning fees! You can track your position using the NFT address provided in step 2, and monitor it through the Polygon explorer.
+</Callout>
+
+<Callout>
+  This endpoint only queues the transaction for execution, while it does check for possible errors, it can still fail on the blockchain for multiple reasons, like price slippage limitations.
+</Callout>
+
+## Troubleshooting
+
+### Common Errors and Solutions
+
+| Error                           | Description                                              | Solution                                                                                        |
+| ------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `WalletNotFoundException`       | The wallet address is not found in your project          | Ensure the `walletAddress` exists and is properly created in your Notus project                 |
+| `NotAuthorizedTokensException`  | One or more token addresses are not supported by the API | Verify token support using the `/api/v1/tokens` endpoint before creating positions              |
+| `UnsupportedChainException`     | Chain not supported                                      | Currently only Polygon (Chain ID: `137`) is supported                                           |
+| `BadPriceRangeException`        | Invalid price range                                      | Ensure `minPrice < maxPrice` and both are positive values                                       |
+| `TickOutOfRangeException`       | Price range outside valid tick bounds                    | Adjust price range or try a different fee tier (0.05%, 0.3%, 1%)                                |
+| `BadDeductFeeTokenException`    | Invalid gas fee token for deduction                      | When using `DEDUCT_FROM_AMOUNT`, ensure `payGasFeeToken` is either `token0` or `token1`         |
+| `ExpiredUserOperationException` | The transaction expired and needs to be executed again   | Re-run `/api/v1/liquidity/amounts` → `/api/v1/liquidity/create` → execute before new expiration |
+
+## More Liquidity Operations
+
+This guide covers the basics of creating liquidity positions. For advanced operations, check out these additional endpoints in the [API Reference](https://docs.notus.team/docs/api-reference):
+
+| Operation            | Endpoint                                          | Description                                  |
+| -------------------- | ------------------------------------------------- | -------------------------------------------- |
+| **Change Liquidity** | `POST /api/v1/liquidity/change`                   | Add or remove tokens from existing positions |
+| **Collect Fees**     | `POST /api/v1/liquidity/collect`                  | Harvest accumulated trading fees             |
+| **List Pools**       | `GET /api/v1/liquidity/pools`                     | Find available pools and their details       |
+| **Get Pool Details** | `GET /api/v1/liquidity/pools/:id`                 | Get specific pool information                |
+| **Pool Statistics**  | `GET /api/v1/liquidity/pools/:id/historical-data` | Get historical performance data              |
+
+<Callout>
+  **Full Documentation**: For complete parameter details, examples, and advanced features, visit the [Liquidity Pools API Reference](https://docs.notus.team/docs/api-reference#liquidity-pools).
+</Callout>
+
+
+# Quickstart
+URL: /docs/guides/quickstart
+Source: /app/apps/docs/content/docs/guides/quickstart.mdx
+
+Getting Started with Notus API
+
+***
+
+title: Quickstart
+description: Getting Started with Notus API
+-------------------------------------------
+
+Welcome to the Notus API Quickstart! Learn how to create your organization, set up a project, use your API Key, and configure fees and treasury addresses to start building in no time.
+
+**Notus API Quickstart Guide**
+
+New to Notus API? Schedule a demo with our team [here](https://calendly.com/jonyreis-notus/notus-api).
+
+**Estimated time to complete this guide: \< 10 minutes**
+
+## Steps to Get Started with Notus API
+
+This guide assumes you already have a Notus API account and access to the dashboard.
+
+* Create an Organization
+
+* Create a Project
+
+* Use the API Key
+
+* Set Fees and Treasury Address
+
+## Create an Organization
+
+To start using the Notus API, you need to create an organization within the dashboard. Follow these steps:
+
+1. Navigate to your **Notus Dashboard** and click the on **“Select“** in the upper right corner.
+
+2. Click **"Create Organization"** and fill in the required details, such as organization name and description.
+   ![Test](/quickstart/quickstart-1.png)
+
+3. After submitting the form, your organization will be created, and you’ll be redirected to the organization details page.
+   ![Test](/quickstart/quickstart-2.png)
+
+## Create a Project
+
+Projects help organize your API usage and settings. Here’s how to create one:
+
+1. In the **Dashboard**, after creating an organization, click on the **“Create Project”** button or card to proceed."
+   ![Test](/quickstart/quickstart-3.png)
+
+2. Once you click **"Confirm"**, your project will be set up, and an API Key will be generated automatically.
+   ![Test](/quickstart/quickstart-4.png)
+
+## Use the API Key
+
+Your project’s API Key is the key to accessing Notus API features. Here’s how to find and use it:
+
+1. Once the project is created, the **API Key** is generated automatically.
+
+2. You can view the API Key in the project details page, under the **"API Keys"** section.
+
+3. Use this key to authenticate your requests to the Notus API.
+   ![Test](/quickstart/quickstart-5.png)
+
+## Set Fees and Treasury Address
+
+Customize your project settings by configuring fees and the treasury address:
+
+1. Go to the **Project Settings** in the dashboard.
+   ![Test](/quickstart/quickstart-6.png)
+
+2. Click the **"Fees"** tab.
+   ![Test](/quickstart/quickstart-7.png)
+
+3. Set the fee percentage and input the treasury address where funds should be sent.
+
+4. Save your settings, and you’re all set to process transactions.
+
+Here’s an example of the configuration screen:
+![Test](/quickstart/quickstart-8.png)
+
+## 🚀 Start Building!
+
+Ready to dive in? Check out these two quick tutorials to get familiar with the Notus API and start integrating it into your projects:
+
+<Cards>
+  <Card title="Create a Smart Wallet" href="/docs/guides/authentication/web3auth" external={false}>
+    Start by creating a smart wallet with social login.
+  </Card>
+
+  <Card title="Send Your First Transaction" href="/docs/guides/gasless-transaction-abstraction/send-transaction" external={false}>
+    Step-by-step guide to transferring tokens with the Notus API.
+  </Card>
+</Cards>
+
+
+# Overview
+URL: /docs/guides/ramp-overview
+Source: /app/apps/docs/content/docs/guides/ramp-overview.mdx
+
+Ramp
+
+***
+
+title: Overview
+description: Ramp
+-----------------
+
+The Ramp module enables your users to **deposit and withdraw stablecoins using local fiat currencies**—fully embedded within your application interface. It abstracts the complexity of dealing with KYC, liquidity, and bank integrations by providing a **unified API connected to multiple fiat on/off-ramp providers**.
+
+Through a single integration, you will be able to:
+
+* **Enable fiat deposits and withdrawals** via local payment methods like bank transfers or instant payment systems (e.g., PIX, SEPA, etc.)
+* **Handle KYC/KYB** for both individuals and businesses, with automatic status tracking and webhook support
+* **Receive stablecoin settlements** (e.g., USDC, USDT) directly into the user’s smart wallet
+* **Access a full audit trail** of all ramp-related transactions via API and webhooks
+
+The module is designed to be **modular and provider-agnostic**. You can start with one ramp provider and scale across jurisdictions without changing your integration logic.
+
+<Callout>
+  The Ramp module is currently under development and will be available in production in **Q2 2025**. Initial rollout will support selected Latin American markets, with additional providers and geographies planned in future phases.
+</Callout>
+
+
+# Ramp Quickstart
+URL: /docs/guides/ramp-quickstart
+Source: /app/apps/docs/content/docs/guides/ramp-quickstart.mdx
+
+FIAT on/off ramp operations
+
+***
+
+title: Ramp Quickstart
+description: FIAT on/off ramp operations
+----------------------------------------
+
+# FIAT Ramp
+
+**FIAT Ramp** allows your users to convert between fiat currencies (FIAT) and cryptocurrencies in a simple and secure way. This module provides a complete solution for:
+
+* **Deposits (On-Ramp)**: Convert FIAT to cryptocurrencies (ACH, PIX, WIRE, SPEI)
+* **Withdrawals (Off-Ramp)**: Convert cryptocurrencies to FIAT (ACH, PIX, WIRE, SPEI, ACH\_COP, TRANSFERS)
+
+## Operation Types
+
+### On-Ramp (Deposit)
+
+Converts fiat currency to cryptocurrencies:
+
+* **Input**: BRL, USD, MXN, etc.
+* **Output**: USDC, BRZ.
+* **Destination**: User's wallet
+
+### Off-Ramp (Withdrawal)
+
+Converts cryptocurrencies to fiat currency:
+
+* **Input**: BRZ, USDC.
+* **Output**: BRL, USD, ARS, etc.
+* **Destination**: User's bank account
+
+<Callout>
+  **Important**: Before executing off-ramp operations, always verify that the individual has sufficient crypto balance in their wallet to complete the transaction. Insufficient balance will cause the operation to fail.
+</Callout>
+
+<Callout>
+  Want to see a working app? Explore the FIAT + KYC Next.js example using Notus API: [FIAT + KYC Next.js example](https://github.com/notuslabs/notus-api-examples/tree/main/examples/fiat-kyc-nextjs-notus-api).
+</Callout>
+
+## Supported Currencies
+
+### Fiat Currencies
+
+* **BRL** - Brazilian Real
+* **USD** - US Dollar
+* **MXN** - Mexican Peso
+* **COP** - Colombian Peso
+* **ARS** - Argentine Peso
+
+### Cryptocurrencies
+
+* **USDC** - USD Coin
+* **BRZ** - Brazilian Digital Token
+
+### Supported Chains
+
+* **POLYGON** - Polygon Network
+* **ARBITRUM** - Arbitrum Network
+* **BASE** - Base Network
+
+### Token Compatibility by Chain
+
+| Token    | POLYGON | ARBITRUM | BASE |
+| -------- | ------- | -------- | ---- |
+| **USDC** | ✅       | ✅        | ✅    |
+| **BRZ**  | ✅       | ❌        | ❌    |
+
+<Callout>
+  **Monthly limit**: $9,000 USD (after KYC approval)
+</Callout>
+
+<Callout>
+  **Important**: To trade **BRZ**, KYC must have been completed with a **Brazilian document** (RG, CNH, or Brazilian Passport).
+</Callout>
+
+### Chain IDs
+
+* **POLYGON**: `137`
+* **ARBITRUM**: `42161`
+* **BASE**: `8453`
+
+## Operation Flow
+
+### On-Ramp (Deposit)
+
+#### 1. Create Quote
+
+First, you must get a quote for the deposit:
+
+```bash
+POST /fiat/deposit/quote
+```
+
+**Request:**
+
+```json
+{
+  "paymentMethodToSend": "PIX",
+  "receiveCryptoCurrency": "USDC",
+  "amountToSendInFiatCurrency": 80,
+  "individualId": "ind_1234567890abcdef",
+  "walletAddress": "0x1234567890abcdef1234567890abcdef12345678",
+  "chainId": 137
+}
+```
+
+**Response:**
+
+```json
+{
+  "depositQuote": {
+    "quoteId": "c8bb5c9c-9a32-4c91-9d4a-6fdd86c9d3b6",
+    "amountToSendInFiatCurrency": "80",
+    "amountToReceiveInCryptoCurrency": "14.27944",
+    "expiresAt": "2025-07-24T14:58:22.702Z"
+  }
+}
+```
+
+#### 2. Create Order
+
+After getting the quote, create the deposit order:
+
+```bash
+POST /fiat/deposit
+```
+
+**Payload:**
+
+```json
+{
+	"quoteId": "c8bb5c9c-9a32-4c91-9d4a-6fdd86c9d3b6"
+}
+```
+
+**Response:**
+
+```json
+{
+	"depositOrder": {
+		"orderId": "order_1234567890abcdef",
+		"expiresAt": "2025-01-20T11:00:00.000Z",
+		"paymentMethodToSendDetails": {
+			"type": "PIX",
+			"pixKey": "<pix_key>",
+			"base64QrCode": "iVBORw0KGgoAAAANSUhEUgAAAYEAAAGBAQAAAACoIjCJAAAF60lEQVR4nO2bTY7qWgyEjRhkyBKyE9hYJJCyMXonWQLDDBDnub46gTy1dKU7vBYMuiFJZWD5p1z2ifaXn1t8EV/EF/HvIR4RcXgcl1V/2uv0HIf2uC5Da89orzi24Se/Dfd8bCiGuLaW18b1fHrm1dO8DD95LX/OLV81jeulzXqktWqIKdIas0xyi3zuJlhr+XeyD+W3GNvPI8aiiDgHdmlLXHTjnrD1nF6yHmSmqojHsWVopIPc47oQC9hqvTwUH+kqJRGKD5JC2qXdI3PEOa5t4Kdelfa7jb8iqgKCnIg1/vTnVxb99xFbfRvwF91oyolpq2nMIMlC8NK1X5WzAIIkeBvJB0FAYBeFS/7MupAVIqNHnlMM0bLa9+dGokLYzI5OBZkYDyIEpga1EPPSqIP3NJhSn6mQaIBeFWYAMme0YoibImAKuA8IaM+g7GjYPRw4YzVE092r/udzSpENvqv0D1bPyUHmVgyRd50Uzqa6k5mvMuHI++ACEP+hHAJbrZFukaFBOnxGcr3bCP2FGujuzlZFEDjD4uz4Ul0Q9wHbVAxdIV6fzFAF0XPiosZOrP45Qn+VIuG76nVvNl0xxMZoQ+UOROAg6unU4yw0OlTEYgi1c+kR8g0SwNygPQga6maDft/NTy2EuG0abHE7d1B21Au4QW9v+vvzeNfBMojYAkL54AzLzcxPtkjCx1tkq9OnDhZByEvOp7YgWawHXqBHxId0A1uJ80cUQyg04PK9e5+l3UymfkoPsUJ1s88byyGCpka0VjVP3fsJt+hGRN8gb1RDKAJc+MT0G3rdJLs8x65fpSNJ3WrVENnKEAsHM305iNobvl3Eh6RewgSHcoh8+LlDtJ+N+MtBeoMftl8lRFpjVerLBICXZA1QNaDwielL3oEkTDv1owbiSU5kNjESBivtnEcVygcod3pVK4aYG8YJqG62N4trAEzwYipkZvTRr2ogmusRGhiCxn0V11u5JsKnFi+YXLRaCD1CE3cXzbuQGcRzrFqdGE9lNWgfvlsFkRGfLpBtvWDiOTR2ETbYNn3VI0sxhGvA0YIGtvI8iruWd07Nuu1QDEHmnzyLsXyH/cSBM1FEbGPKT29QBSEpVqTXSqWaGiYwqJeaynhoATUohpitx6ZvhPk9L0DQcDrU0IIQGmoh5ALN+mSY84c63NaZr7Rcec6e79ZBKAG4iwlRP9WFTaqD7ovw/b8rKoEQu+kEF86PikPxp83t/b7Y8FgM8W5p714dOvaRJOq0A+fEgsWur62CkDjFQGYKRuz0dAyaGUswroEZDcUQ9DNSKyTJH7p4YVtRILFk659aCHMa18G7Sr6GUiuRElhN0sZe362CkAtE9PbmTE40DC4wjYyi6OirIYJdEgnxTS0towqlQ6cClkZFgHbxUQWR1lBnI4oTn+cQpi1hIt2fd51wFQRrg1hIO0WmOHPvbPoQDjq41yyLIGhfA7IDtUfP8ToR09eL7rz29aMKYoHSeb0GGuAVI40qzpRAjeguG1EqhAiJdm3xMnxzQIjhcT5AmeFiMfNZDSG5Uo27p1Av79hcqRCj88HrxIDitsVHGcR78OC9qrb4mtaJ+gu2EWwrhsAPZqt0GIzMwFtiO/qB+7z3MuogmCy7sfNmjdJhdK63eO9mP6Ovgmhdr5OWoc+4yZWItya92rfYb8SXQLDtb/mO7cA+hOM0DDIG+hUqdjHEriTcUOO9MscIFlLEat2e+1RBWJNGiWYQib9MvS5Ixenn/XqyrIS4brM20Z73qMJvkaRnQUMLZkM1hNt1DoHA9P3pki1nAViRPn5sVQPhG0eHAVnAy4J32+/oNavtdGslxPvABzq1hnAoGJRA5rDYiuhpxRBXa9I+2qhE0TOhQ4PJ1NFdbzVET4ekf5/uOhMgp056OecFNSiK8O7gwSe4GUDd7CBW7dvOS0ohYvQUyrMJL1I5UTCgGDkeUQ1BfHiJCIk6SIfWMVkePldFhNcGw7HAsYePl3CmVR2fhLxiiL/7fBFfxBfxzyH+A5fxlBm43+NZAAAAAElFTkSuQmCC"
+		}
+	}
+}
+```
+
+#### On-Ramp (Deposit) Flow Diagram
+
+![Fiat Deposit Sequence Diagram](/kyc/fiat-deposit.png)
+
+### Off-Ramp (Withdrawal)
+
+#### 1. Create Quote
+
+Get a quote for the withdrawal:
+
+```bash
+POST /fiat/withdraw/quote
+```
+
+**Request:**
+
+```json
+{
+  "individualId": "ind_1234567890abcdef",
+  "amountToSendInCryptoCurrency": "10",
+  "cryptoCurrencyToSend": "USDC",
+  "paymentMethodToReceiveDetails": {
+    "type": "PIX",
+    "pixKey": "joao@email.com"
+  },
+  "chainId": 137
+}
+```
+
+**Response:**
+
+```json
+{
+	"withdrawQuote": {
+		"quoteId": "1305c776-6d11-40e8-ade4-1d07bfaa95b9",
+		"cryptoCurrencyToSend": "USDC",
+		"fiatCurrencyToReceive": "BRL",
+		"amountToSendInCryptoCurrency": "10",
+		"estimatedGasFeeInCryptoCurrency": "0.01",
+		"transactionFeeInCryptoCurrency": "0",
+		"expiresAt": "2025-07-30T16:26:31.793Z",
+		"amountToReceiveInFiatCurrency": "55.55"
+	}
+}
+```
+
+#### 2. Create Order
+
+Create the withdrawal order:
+
+```bash
+POST /fiat/withdraw
+```
+
+**Request:**
+
+```json
+{
+	"quoteId": "1305c776-6d11-40e8-ade4-1d07bfaa95b9",
+	"walletAddress": "0x9ba7dbda009d6fdeb0aebf82c62f3cdc4a941091"
+}
+```
+
+**Response:**
+
+```json
+{
+	"withdrawOrder": {
+		"userOperationHash": "0x2d96e00c119ff08ed90b934800768602e8d99dd4de996900292ec2e2600114ee",
+		"authorization": null,
+		"orderId": "f64ea5a8-ee76-4dc7-b845-274843415025",
+		"amountToSendInCryptoCurrency": "10",
+		"amountToReceiveInFiatCurrency": "55.55",
+		"transactionFeeAmountInCryptoCurrency": "0",
+		"estimatedGasFeeAmountInCryptoCurrency": "0.01",
+		"expiresAt": "2025-07-30T16:26:31.793Z"
+	}
+}
+```
+
+#### 3. Execute User Operation
+
+After receiving the order response, you must sign the `userOperationHash` and execute the User Operation:
+
+```bash
+POST /crypto/execute-user-op
+```
+
+**Payload:**
+
+```json
+{
+  "userOperationHash": "0x2d96e00c119ff08ed90b934800768602e8d99dd4de996900292ec2e2600114ee",
+  "signature": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+}
+```
+
+<Callout>
+  **Important**: For Off-Ramp operations, it is **mandatory** to sign the `userOperationHash` and execute the User Operation for the transaction to be processed on the blockchain.
+</Callout>
+
+#### Off-Ramp (Withdrawal) Flow Diagram
+
+![Fiat Withdraw Sequence Diagram](/kyc/fiat-withdraw.png)
+
+## Webhooks
+
+Configure webhooks to receive real-time notifications about the status of your FIAT ramp operations.
+
+### Webhook Example - On-Ramp (Deposit)
+
+```json
+{
+  "chainId": 137,
+  "event_type": "ramp.deposit",
+  "orderId": "order_85b80496-f102-4585-8047-4394dab3b6a8",
+  "receivedCryptoAmount": "0.05",
+  "receivedCryptoCurrency": "ETH",
+  "sendFiatAmount": "100.00",
+  "sendFiatCurrency": "USD",
+  "status": "COMPLETED",
+  "transactionHash": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+  "type": "ON_RAMP",
+  "walletAddress": "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
+}
+```
+
+### Webhook Example - Off-Ramp (Withdrawal)
+
+```json
+{
+  "chainId": 137,
+  "estimatedGasFeeAmount": "0.001",
+  "event_type": "ramp.withdraw",
+  "orderId": "order_85b80496-f102-4585-8047-4394dab3b6a8",
+  "receivedFiatAmount": "100.00",
+  "receivedFiatCurrency": "USD",
+  "sendCryptoAmount": "0.05",
+  "sendCryptoCurrency": "USDC",
+  "status": "COMPLETED",
+  "transactionFeeAmount": "0.002",
+  "transactionHash": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+  "type": "OFF_RAMP",
+  "userOpHash": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+  "walletAddress": "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6"
+}
+```
+
+<Callout>
+  **Available webhooks**: `ramp.deposit` and `ramp.withdraw` with status `COMPLETED`, `FAILED`, `PROCESSING`
+</Callout>
+
+## Next Steps
+
+Now that you know about FIAT Ramp, you can:
+
+* Implement deposits and withdrawals in your application
+* Configure webhooks for notifications
+* Customize the user experience
+* Monitor transactions via API
+
+<Callout>
+  **Important**: Always verify that the user has approved KYC before starting FIAT ramp operations.
+</Callout>
+
+
+# Swap Providers
+URL: /docs/guides/swap-providers
+Source: /app/apps/docs/content/docs/guides/swap-providers.mdx
+
+Guide to the swap providers integrated with the Notus API and how the /swap/quote endpoint works.
+
+***
+
+title: Swap Providers
+description: Guide to the swap providers integrated with the Notus API and how the /swap/quote endpoint works.
+--------------------------------------------------------------------------------------------------------------
+
+## Introduction
+
+The Notus API `/swap/quote` endpoint provides a real-time quote for token swap operations. The API queries multiple liquidity providers, automatically selects the best route considering price, fees, slippage, and liquidity availability, and returns an execution-ready quote. Each provider's fees are accounted for during routing, so the final price returned already reflects any embedded costs.
+
+By aggregating several providers, the Notus API delivers better pricing and deeper liquidity, supporting both same-chain swaps and cross-chain swaps when applicable.
+
+<Callout>
+  Note: executing a swap typically happens in two steps: (1) request a quote via
+  `/swap/quote` and (2) execute the operation based on the returned quote. In
+  Account Abstraction environments, execution can occur via a UserOperation
+  using the returned `quoteId`.
+</Callout>
+
+## Integrated Providers
+
+### Enso
+
+* **Name**: Enso
+* **Description**: DeFi aggregator/router that integrates multiple liquidity sources to find efficient swap routes. Operates across several EVM networks (e.g., Ethereum, Arbitrum, Optimism, Polygon, BNB Chain, Avalanche) and is known for advanced routing strategies and multicall compositions.
+* **Differential**: Provides faster quote responses
+* **Fee**: No fees are directly charged by Enso.
+* **Audit link**: [https://github.com/EnsoBuild/enso-audits](https://github.com/EnsoBuild/enso-audits)
+
+### LI.FI
+
+* **Name**: LI.FI
+* **Description**: Cross-chain aggregator that combines bridges and DEXs to execute swaps and transfers across multiple blockchains (EVM and non‑EVM). Supports networks such as Ethereum, Arbitrum, Optimism, Polygon, BNB Chain, Avalanche, Base, among others, selecting routes based on cost and settlement time.
+* **Differential**: Known for better stability
+* **Fee**: 0.25% service fee on each transaction. Integrators can add their own fee percentage and integrator string during setup. Volume-based commercial discounts available.
+* **Fee Documentation**: [https://docs.li.fi/guides/fees-monetization/faq#does-li-fi-charge-a-fee-on-every-swap-or-bridge-transaction](https://docs.li.fi/guides/fees-monetization/faq#does-li-fi-charge-a-fee-on-every-swap-or-bridge-transaction)
+* **Security**: In‑house security team; each release is independently audited by a qualified third‑party; periodic API penetration tests; smart contract monitoring. See: [https://docs.li.fi/introduction/learn-more/security-and-audits#security-and-audits](https://docs.li.fi/introduction/learn-more/security-and-audits#security-and-audits)
+* **Audit link**: [https://li.fi/knowledge-hub/li-fi-is-audited-twice-over/](https://li.fi/knowledge-hub/li-fi-is-audited-twice-over/)
+* **Audit notes**: Public audits referenced are from 2022.
+
+### Odos
+
+* **Name**: Odos
+* **Description**: Order router that optimizes swaps by splitting volume and using multi‑step paths across liquidity pools. Serves popular EVM networks (e.g., Ethereum, Arbitrum, Polygon, BNB Chain, Avalanche, Base) with a focus on best effective price and low slippage.
+* **Differential**: Often yields better destination amount output
+* **Fee**: Market Orders - 15 bps (0.15%) on volatile/custom assets, 3 bps (0.03%) on stablecoin swaps
+* **Fee Documentation**: [https://docs.odos.xyz/build/fees](https://docs.odos.xyz/build/fees)
+* **Audit link**: [https://docs.odos.xyz/build/audits](https://docs.odos.xyz/build/audits)
+
+### ParaSwap (also known as Velora)
+
+* **Name**: ParaSwap
+* **Description**: DEX aggregator focused on price efficiency and MEV protection, operating across several EVM networks (Ethereum, Polygon, BNB Chain, Avalanche, Fantom, Arbitrum, Optimism, Base). Offers route optimizations and reliable execution for both small and large order sizes.
+* **Fee**: No fees are directly charged by ParaSwap
+* **Audit link**: [https://developers.velora.xyz/security](https://developers.velora.xyz/security)
+
+### Rango
+
+* **Name**: Rango
+* **Description**: Cross‑chain aggregator that combines bridges and DEXs across different ecosystems (including EVM and non‑EVM networks) to find the best route between assets and chains. Suited for flows that require portability across networks.
+* **Fee**: Rango charges 15bps (0.5%) per swap.
+* **Audit link**: [https://docs.rango.exchange/smart-contracts/audit-reports](https://docs.rango.exchange/smart-contracts/audit-reports)
+
+### Relay
+
+* **Name**: Relay
+* **Description**: Bridging/routing infrastructure used especially for flows that involve Bitcoin, in addition to inter‑chain routes. Focuses on integration simplicity and automated selection of paths with sufficient liquidity.
+* **Differential**: Supports Bitcoin bridging
+* **Audit link**: [https://github.com/relayprotocol/relay-depository/tree/main/audit-reports](https://github.com/relayprotocol/relay-depository/tree/main/audit-reports)
+
+### XY Finance
+
+* **Name**: XY Finance
+* **Description**: Cross‑chain aggregator connecting DEXs and bridges to offer inter‑chain swaps with good liquidity depth. Supports multiple blockchains and prioritizes routes with the best total cost and completion time.
+* **Differential**: Often yields better output on cross‑chain swaps
+* **Fee**: No fees are directly charged by XY Finance.
+* **Audit link**: [https://docs.xy.finance/smart-contract/security](https://docs.xy.finance/smart-contract/security)
+
+<Callout type="info">
+  Fee structures can change over time. For the most current information, please
+  consult the official documentation or support channels of each provider. The
+  Notus API includes all provider fees in the final quote, ensuring transparency
+  in the total cost of operations.
+</Callout>
+
+
+# Overview
+URL: /docs/guides/webhook-overview
+Source: /app/apps/docs/content/docs/guides/webhook-overview.mdx
+
+Webhook
+
+***
+
+title: Overview
+description: Webhook
+--------------------
+
+Monitoring blockchain activity in real time is crucial for building responsive and automated Web3 applications. However, constantly polling blockchain data is inefficient, costly, and complex. **The Notus API Webhooks module** solves this by enabling **real-time event notifications and customizable alerts**, allowing applications to react instantly to blockchain events without unnecessary overhead.
+
+With **Webhooks & Automation**, developers can:
+
+* **Receive Real-Time Blockchain Event Notifications** – Get instant updates on **wallet activity, smart contract interactions, and token transfers**.
+* **Set Up Custom Alerts** – Monitor specific onchain activities, such as **large transactions, contract executions, or abnormal wallet behavior**.
+
+By eliminating the need for manual blockchain polling, **Webhooks & Automation** helps fintechs, exchanges, and Web3 platforms **enhance user experience, optimize performance, and automate key workflows** efficiently.
+
+
+# Quickstart
+URL: /docs/guides/webhook-quickstart
+Source: /app/apps/docs/content/docs/guides/webhook-quickstart.mdx
+
+
+
+***
+
+## title: Quickstart
+
+## How to Create a Webhook in the Dashboard
+
+1. Log in to the Notus Dashboard.
+
+2. Navigate to the **Webhooks** section.
+   ![Test](/webhook/webhook-1.png)
+
+3. Click **Create Webhook**.
+   ![Test](/webhook/webhook-2.png)
+
+4. Fill in the following details:
+
+   * **Webhook URL**: The endpoint where events will be sent.
+   * **Event Types**: Select the events you want to subscribe to (e.g., transaction events, swaps).
+
+5. Save the webhook. The webhook will be immediately active and start sending events when triggered.
+
+6. **Test and Simulate Events** (Optional)
+   Navigate to the **Events** section in your dashboard to test and simulate webhook events. This allows you to verify that your webhook endpoint is working correctly before going live.
+
+   ![Events dashboard](/webhook/webhook-3.png)
+
+<Callout>
+  > **Tip**: Use the event simulation feature to test your webhook integration
+  > without waiting for real transactions to occur.
+</Callout>
+
+<Callout>
+  > **Developer Tip**: In the Events section, you can also view the complete
+  > type definitions for all webhook events, including detailed schemas and
+  > example payloads for each event type.
+</Callout>
+
+
+# Signature
+URL: /docs/guides/webhook-signature
+Source: /app/apps/docs/content/docs/guides/webhook-signature.mdx
+
+
+
+***
+
+## title: Signature
+
+## Determining the expected signature
+
+Svix uses an HMAC with SHA-256 to sign its webhooks.
+
+Each webhook call includes three headers with additional information that are used for verification:
+
+`svix-id`: the unique message identifier for the webhook message. This identifier is unique across all messages, but will be the same when the same webhook is being resent (e.g. due to a previous failure).
+`svix-timestamp`: timestamp in seconds since epoch.
+`svix-signature`: the Base64 encoded list of signatures (space delimited).
+
+The content to sign is composed by concatenating the id, timestamp and payload, separated by the full-stop character (.). In code, it will look something like:
+
+```ts
+const signedContent = `${svix_id}.${svix_timestamp}.${body}`;
+```
+
+Where body is the raw body of the request. The signature is sensitive to any changes, so even a small change in the body will cause the signature to be completely different. This means that you should not change the body in any way before verifying.
+
+So to calculate the expected signature, you should HMAC the `signed_content` from above using the base64 portion of your signing secret (this is the part after the `whsec_` prefix) as the key. For example, given the secret `whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw` you will want to use `MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw`.
+
+For example, this is how you can calculate the signature in Node.js:
+
+```ts
+const crypto = require("crypto");
+
+const signedContent = `${svix_id}.${svix_timestamp}.${body}`;
+const secret = "whsec_5WbX5kEWLlfzsGNjH64I8lOOqUB6e8FH";
+
+// Need to base64 decode the secret
+const secretBytes = Buffer.from(secret.split("_")[1], "base64");
+const signature = crypto
+  .createHmac("sha256", secretBytes)
+  .update(signedContent)
+  .digest("base64");
+
+console.log(signature);
+```
+
+This generated signature should match one of the signatures sent in the `svix-signature` header.
+
+The `svix-signature` header is composed of a list of space delimited signatures and their corresponding version identifiers. The signature list is most commonly of length one. Though there could be any number of signatures. For example:
+
+```txt
+v1,g0hM9SsE+OTPJTGt/tmIKtSyZlE3uFJELVlNIOLJ1OE= v1,bm9ldHUjKzFob2VudXRob2VodWUzMjRvdWVvdW9ldQo= v2,MzJsNDk4MzI0K2VvdSMjMTEjQEBAQDEyMzMzMzEyMwo=
+```
+
+Make sure to remove the version prefix and delimiter (e.g. `v1,`) before verifying the signature.
+
+Please note that to compare the signatures it's recommended to use a constant-time string comparison method in order to prevent timing attacks.
+
+## Verify timestamp
+
+As mentioned above, Svix also sends the timestamp of the attempt in the `svix-timestamp` header. You should compare this timestamp against your system timestamp and make sure it's within your tolerance in order to prevent timestamp attacks.
+
+## Example signatures
+
+Here is an example you can use to verify you implemented everything correctly. Please note that this may fail verification due to the timestamp being old.
+
+```ts
+secret = "whsec_plJ3nmyCDGBKInavdOK15jsl";
+payload = '{"event_type":"ping","data":{"success":true}}';
+msg_id = "msg_loFOjxBNrRLzqYUf";
+timestamp = "1731705121";
+
+// Would generate the following signature:
+signature = "v1,rAvfW3dJ/X/qxhsaXPOyyCGmRKsaKWcsNccKXlIktD0=";
+```
+
+Additionally, you can use the webhook dashboard to generate as many examples as you need.
+
+
+# Expo SDK
+URL: /docs/sdks/expo
+Source: /app/apps/docs/content/docs/sdks/expo.mdx
+
+Install and use the Notus Expo SDK (React Native)
+
+***
+
+title: Expo SDK
+description: Install and use the Notus Expo SDK (React Native)
+--------------------------------------------------------------
+
+## Install
+
+```bash
+pnpm add @notus-api/expo-sdk react-native-webview
+```
+
+## Usage
+
+```tsx
+import { Liveness } from '@notus-api/expo-sdk'
+
+export default function KycLiveness() {
+  return <Liveness sessionId="<SESSION_ID>" />
+}
+```
+
+## Events
+
+```tsx
+<Liveness
+  sessionId="<SESSION_ID>"
+  onSuccess={() => console.log('KYC liveness completed')}
+  onError={(e) => console.error('KYC liveness error', e)}
+/>
+```
+
+## Troubleshooting
+
+* If the camera permission prompt doesn’t appear, verify that your simulator/emulator or device has a camera available and that your app has the necessary camera permissions.
+
+## Example project
+
+See a complete example app here: [notus-api-examples/kyc-react-native](https://github.com/notuslabs/notus-api-examples/tree/main/examples/kyc-react-native)
+
+
+# Overview
+URL: /docs/sdks
+Source: /app/apps/docs/content/docs/sdks/index.mdx
+
+Official Notus SDKs for React and Expo
+
+***
+
+title: Overview
+description: Official Notus SDKs for React and Expo
+---------------------------------------------------
+
+The Notus SDKs help you integrate KYC liveness flows quickly in web and mobile apps.
+
+## Quick overview
+
+These SDKs are specifically for the KYC liveness flow. They do not handle other KYC steps or Ramp; use the API for session creation and status checks, then pass the `sessionId` to the components.
+
+## Prerequisites
+
+* You need a KYC verification `sessionId`. Create it via the appropriate endpoint for your KYC level:
+  * Standard individual: [/docs/api-reference/know-your-customer/createStandardIndividualVerification](/docs/api-reference/know-your-customer/createStandardIndividualVerification)
+  * Browse all KYC endpoints: [/docs/api-reference](/docs/api-reference)
+
+Example (standard individual):
+
+```bash
+POST /kyc/individual-verification-sessions/standard
+```
+
+Use the returned `sessionId` in the SDK components.
+
+## Packages
+
+* React: `@notus-api/react-sdk`
+* Expo/React Native: `@notus-api/expo-sdk`
+
+Use the pages in this section for installation and examples.
+
+## Examples
+
+* React (web) example: [notus-api-examples/liveness-kyc-sdk-notus-api](https://github.com/notuslabs/notus-api-examples/tree/main/examples/liveness-kyc-sdk-notus-api)
+* React Native (Expo) example: [notus-api-examples/kyc-react-native](https://github.com/notuslabs/notus-api-examples/tree/main/examples/kyc-react-native)
+
+
+# React SDK
+URL: /docs/sdks/react
+Source: /app/apps/docs/content/docs/sdks/react.mdx
+
+Install and use the Notus React SDK
+
+***
+
+title: React SDK
+description: Install and use the Notus React SDK
+------------------------------------------------
+
+## Install
+
+```bash
+pnpm add @notus-api/react-sdk
+```
+
+## Usage
+
+```tsx
+import { Liveness } from '@notus-api/react-sdk'
+
+export default function KycLiveness() {
+  return (
+    <div style={{ width: '100%', height: 600 }}>
+      <Liveness sessionId="<SESSION_ID>" />
+    </div>
+  )
+}
+```
+
+### With event callbacks
+
+```tsx
+import { Liveness } from '@notus-api/react-sdk'
+
+export default function KycLiveness() {
+  return (
+    <Liveness
+      sessionId="<SESSION_ID>"
+      onSuccess={() => console.log('KYC liveness completed')}
+      onError={(e) => console.error('KYC liveness error', e)}
+    />
+  )
+}
+```
+
+## Theming
+
+You can customize the UI colors with the `theme` prop:
+
+```tsx
+<Liveness
+  sessionId="<SESSION_ID>"
+  language="en"
+  theme={{
+    primaryColor: '#111827',
+    primaryTextColor: '#FFFFFF',
+    backgroundColor: '#0B1220',
+    textColor: '#E5E7EB',
+    disabledColor: '#4B5563',
+    disabledTextColor: '#9CA3AF',
+  }}
+/>
+```
+
+Supported theme fields: `primaryColor`, `primaryTextColor`, `backgroundColor`, `textColor`, `disabledColor`, `disabledTextColor`.
+
+## Language
+
+Set the interface language via `language` prop: `'en' | 'pt'` (default `'en'`).
+
+## Example project
+
+See a complete example app here: [notus-api-examples/liveness-kyc-sdk-notus-api](https://github.com/notuslabs/notus-api-examples/tree/main/examples/liveness-kyc-sdk-notus-api)
+
+
+# List Chains
+URL: /docs/api-reference/blockchain/ListChainsController_listChains_v1
+Source: /app/apps/docs/content/docs/api-reference/blockchain/ListChainsController_listChains_v1.mdx
+
+This endpoint lists all chains supported by Notus API
+
+***
+
+title: List Chains
+description: This endpoint lists all chains supported by Notus API
+full: true
+\_openapi:
+method: GET
+route: /api/v1/crypto/chains
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: This endpoint lists all chains supported by Notus API
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/crypto/chains","method":"get"}]} webhooks={[]} hasHead={false} />
+
+
+# List Tokens
+URL: /docs/api-reference/blockchain/ListWhitelistTokensController_execute_v1
+Source: /app/apps/docs/content/docs/api-reference/blockchain/ListWhitelistTokensController_execute_v1.mdx
+
+This endpoint lists all tokens whitelisted in the project by default, or all tokens Notus API supports with a flag.
+
+***
+
+title: List Tokens
+description: >-
+This endpoint lists all tokens whitelisted in the project by default, or all
+tokens Notus API supports with a flag.
+full: true
+\_openapi:
+method: GET
+route: /api/v1/crypto/tokens
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: >-
+  This endpoint lists all tokens whitelisted in the project by default,
+  or all tokens Notus API supports with a flag.
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/crypto/tokens","method":"get"}]} webhooks={[]} hasHead={false} />
+
+
+# Create Fiat Deposit Order
+URL: /docs/api-reference/fiat/CreateFiatDepositController_createFiatDeposit_v1
+Source: /app/apps/docs/content/docs/api-reference/fiat/CreateFiatDepositController_createFiatDeposit_v1.mdx
+
+This endpoint creates a fiat deposit order for a given quote id.
+
+***
+
+title: Create Fiat Deposit Order
+description: This endpoint creates a fiat deposit order for a given quote id.
+full: true
+\_openapi:
+method: POST
+route: /api/v1/fiat/deposit
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: This endpoint creates a fiat deposit order for a given quote id.
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/fiat/deposit","method":"post"}]} webhooks={[]} hasHead={false} />
+
+
+# Create Fiat Deposit Quote
+URL: /docs/api-reference/fiat/CreateFiatDepositQuoteController_quoteFiatDeposit_v1
+Source: /app/apps/docs/content/docs/api-reference/fiat/CreateFiatDepositQuoteController_quoteFiatDeposit_v1.mdx
+
+This endpoint creates a fiat deposit quote.
+
+***
+
+title: Create Fiat Deposit Quote
+description: This endpoint creates a fiat deposit quote.
+full: true
+\_openapi:
+method: POST
+route: /api/v1/fiat/deposit/quote
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: This endpoint creates a fiat deposit quote.
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/fiat/deposit/quote","method":"post"}]} webhooks={[]} hasHead={false} />
+
+
+# Create Fiat Withdrawal Order
+URL: /docs/api-reference/fiat/CreateFiatWithdrawOrderController_quoteFiatWithdraw_v1
+Source: /app/apps/docs/content/docs/api-reference/fiat/CreateFiatWithdrawOrderController_quoteFiatWithdraw_v1.mdx
+
+This endpoint creates a fiat withdrawal order for a given quote id.
+
+***
+
+title: Create Fiat Withdrawal Order
+description: This endpoint creates a fiat withdrawal order for a given quote id.
+full: true
+\_openapi:
+method: POST
+route: /api/v1/fiat/withdraw
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: This endpoint creates a fiat withdrawal order for a given quote id.
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/fiat/withdraw","method":"post"}]} webhooks={[]} hasHead={false} />
+
+
+# Create Fiat Withdrawal Quote
+URL: /docs/api-reference/fiat/CreateFiatWithdrawQuoteController_quoteFiatWithdraw_v1
+Source: /app/apps/docs/content/docs/api-reference/fiat/CreateFiatWithdrawQuoteController_quoteFiatWithdraw_v1.mdx
+
+This endpoint creates a fiat withdrawal quote.
+
+***
+
+title: Create Fiat Withdrawal Quote
+description: This endpoint creates a fiat withdrawal quote.
+full: true
+\_openapi:
+method: POST
+route: /api/v1/fiat/withdraw/quote
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: This endpoint creates a fiat withdrawal quote.
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/fiat/withdraw/quote","method":"post"}]} webhooks={[]} hasHead={false} />
+
+
+# Create a standard individual verification session
+URL: /docs/api-reference/know-your-customer/createStandardIndividualVerification
+Source: /app/apps/docs/content/docs/api-reference/know-your-customer/createStandardIndividualVerification.mdx
+
+Creates a new KYC verification session for an individual. This endpoint initiates the identity verification process by collecting personal information and document details. The session will generate upload URLs for document images and can optionally require liveness verification.
+
+***
+
+title: Create a standard individual verification session
+description: >-
+Creates a new KYC verification session for an individual. This endpoint
+initiates the identity verification process by collecting personal information
+and document details. The session will generate upload URLs for document
+images and can optionally require liveness verification.
+full: true
+\_openapi:
+method: POST
+route: /api/v1/kyc/individual-verification-sessions/standard
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: >-
+  Creates a new KYC verification session for an individual. This
+  endpoint initiates the identity verification process by collecting
+  personal information and document details. The session will generate
+  upload URLs for document images and can optionally require liveness
+  verification.
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/kyc/individual-verification-sessions/standard","method":"post"}]} webhooks={[]} hasHead={false} />
+
+
+# Get a standard individual verification session result
+URL: /docs/api-reference/know-your-customer/getStandardIndividualVerificationSessionResult
+Source: /app/apps/docs/content/docs/api-reference/know-your-customer/getStandardIndividualVerificationSessionResult.mdx
+
+Retrieves the current status and results of a standard individual verification session. This endpoint allows you to check the progress and outcome of a KYC verification process.
+
+***
+
+title: Get a standard individual verification session result
+description: >-
+Retrieves the current status and results of a standard individual verification
+session. This endpoint allows you to check the progress and outcome of a KYC
+verification process.
+full: true
+\_openapi:
+method: GET
+route: /api/v1/kyc/individual-verification-sessions/standard/{sessionId}
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: >-
+  Retrieves the current status and results of a standard individual
+  verification session. This endpoint allows you to check the progress
+  and outcome of a KYC verification process.
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/kyc/individual-verification-sessions/standard/{sessionId}","method":"get"}]} webhooks={[]} hasHead={false} />
+
+
+# Process a standard individual verification session
+URL: /docs/api-reference/know-your-customer/processStandardIndividualVerification
+Source: /app/apps/docs/content/docs/api-reference/know-your-customer/processStandardIndividualVerification.mdx
+
+Processes a standard individual verification session after documents have been uploaded. This endpoint triggers the actual verification process using the uploaded document images and personal information provided during session creation.
+
+***
+
+title: Process a standard individual verification session
+description: >-
+Processes a standard individual verification session after documents have been
+uploaded. This endpoint triggers the actual verification process using the
+uploaded document images and personal information provided during session
+creation.
+full: true
+\_openapi:
+method: POST
+route: /api/v1/kyc/individual-verification-sessions/standard/{sessionId}/process
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: >-
+  Processes a standard individual verification session after documents
+  have been uploaded. This endpoint triggers the actual verification
+  process using the uploaded document images and personal information
+  provided during session creation.
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/kyc/individual-verification-sessions/standard/{sessionId}/process","method":"post"}]} webhooks={[]} hasHead={false} />
+
+
+# Change Liquidity
+URL: /docs/api-reference/liquidity-pools/ChangeLiquidityController_handle_v1
+Source: /app/apps/docs/content/docs/api-reference/liquidity-pools/ChangeLiquidityController_handle_v1.mdx
+
+Change the amount of liquidity provided in a liquidity pool
+
+***
+
+title: Change Liquidity
+description: Change the amount of liquidity provided in a liquidity pool
+full: true
+\_openapi:
+method: POST
+route: /api/v1/liquidity/change
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: Change the amount of liquidity provided in a liquidity pool
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/liquidity/change","method":"post"}]} webhooks={[]} hasHead={false} />
+
+
+# Collect fees from liquidity
+URL: /docs/api-reference/liquidity-pools/CollectFeesController_handle_v1
+Source: /app/apps/docs/content/docs/api-reference/liquidity-pools/CollectFeesController_handle_v1.mdx
+
+Collects the fees received by the liquidity NFT. This will both create a user operation to be executed and will show how much will be collected, so you can choose if you really want to collect it or not. Always collects the full amount.
+
+***
+
+title: Collect fees from liquidity
+description: >-
+Collects the fees received by the liquidity NFT. This will both create a user
+operation to be executed and will show how much will be collected, so you can
+choose if you really want to collect it or not. Always collects the full
+amount.
+full: true
+\_openapi:
+method: POST
+route: /api/v1/liquidity/collect
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: >-
+  Collects the fees received by the liquidity NFT. This will both create
+  a user operation to be executed and will show how much will be
+  collected, so you can choose if you really want to collect it or not.
+  Always collects the full amount.
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/liquidity/collect","method":"post"}]} webhooks={[]} hasHead={false} />
+
+
+# Create Liquidity
+URL: /docs/api-reference/liquidity-pools/CreateLiquidityController_handle_v1
+Source: /app/apps/docs/content/docs/api-reference/liquidity-pools/CreateLiquidityController_handle_v1.mdx
+
+This endpoint creates liquidity for a liquidity pool
+
+***
+
+title: Create Liquidity
+description: This endpoint creates liquidity for a liquidity pool
+full: true
+\_openapi:
+method: POST
+route: /api/v1/liquidity/create
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: This endpoint creates liquidity for a liquidity pool
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/liquidity/create","method":"post"}]} webhooks={[]} hasHead={false} />
+
+
+# Get Liquidity Amounts
+URL: /docs/api-reference/liquidity-pools/GetAmountsController_handle_v1
+Source: /app/apps/docs/content/docs/api-reference/liquidity-pools/GetAmountsController_handle_v1.mdx
+
+Get the amounts of tokens needed to provide liquidity to a pool based on the maximum you want to spend in one token. You can pass the max amount for both tokens and receive quotes for the two possible scenarios, this way you can check in a single call what option works based on the amounts your user has. E.g. your user wants to provide liquidity to the ETH-USDC pool, and they have 100 USDC and 100 ETH in their wallet. By passing both as the max amounts in `tokenXMaxAmount` you'll get two quotes. One telling how much ETH you need to provided if you send 100 USDC and another telling how much USDC you need to provide given 100 ETH. Then you can choose which one actually fits the liquidity your user has. **Note**: If only one of them is returned it means the price range is outside the current price, so only one token can be provided to create liquidity, the other will always be zero.
+
+***
+
+title: Get Liquidity Amounts
+description: >-
+Get the amounts of tokens needed to provide liquidity to a pool based on the
+maximum you want to spend in one token. You can pass the max amount for both
+tokens and receive quotes for the two possible scenarios, this way you can
+check in a single call what option works based on the amounts your user has.
+E.g. your user wants to provide liquidity to the ETH-USDC pool, and they have
+100 USDC and 100 ETH in their wallet. By passing both as the max amounts in
+`tokenXMaxAmount` you'll get two quotes. One telling how much ETH you need to
+provided if you send 100 USDC and another telling how much USDC you need to
+provide given 100 ETH. Then you can choose which one actually fits the
+liquidity your user has. **Note**: If only one of them is returned it means
+the price range is outside the current price, so only one token can be
+provided to create liquidity, the other will always be zero.
+full: true
+\_openapi:
+method: GET
+route: /api/v1/liquidity/amounts
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: >-
+  Get the amounts of tokens needed to provide liquidity to a pool based
+  on the maximum you want to spend in one token. You can pass the max
+  amount for both tokens and receive quotes for the two possible
+  scenarios, this way you can check in a single call what option works
+  based on the amounts your user has. E.g. your user wants to provide
+  liquidity to the ETH-USDC pool, and they have 100 USDC and 100 ETH in
+  their wallet. By passing both as the max amounts in `tokenXMaxAmount`
+  you'll get two quotes. One telling how much ETH you need to provided
+  if you send 100 USDC and another telling how much USDC you need to
+  provide given 100 ETH. Then you can choose which one actually fits the
+  liquidity your user has. **Note**: If only one of them is returned it
+  means the price range is outside the current price, so only one token
+  can be provided to create liquidity, the other will always be zero.
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/liquidity/amounts","method":"get"}]} webhooks={[]} hasHead={false} />
+
+
+# Get Liquidity Pool
+URL: /docs/api-reference/liquidity-pools/GetPoolController_transactionsApi_v1
+Source: /app/apps/docs/content/docs/api-reference/liquidity-pools/GetPoolController_transactionsApi_v1.mdx
+
+Get liquidity pool by pool ID with aggregated stats
+
+***
+
+title: Get Liquidity Pool
+description: Get liquidity pool by pool ID with aggregated stats
+full: true
+\_openapi:
+method: GET
+route: /api/v1/liquidity/pools/{id}
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: Get liquidity pool by pool ID with aggregated stats
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/liquidity/pools/{id}","method":"get"}]} webhooks={[]} hasHead={false} />
+
+
+# List Liquidity Pools
+URL: /docs/api-reference/liquidity-pools/ListPoolsController_transactionsApi_v1
+Source: /app/apps/docs/content/docs/api-reference/liquidity-pools/ListPoolsController_transactionsApi_v1.mdx
+
+List liquidity pools that exist on the blockchain. The pool can be in a broken state, like having nearly no liquidity. Use the data returned by this endpoint to asses if the pool is worth investing into. Choose the aggregation interval to control both granularity and time range: DAILY (last 30 days), WEEKLY (last 12 weeks), MONTHLY (last 12 months).
+
+***
+
+title: List Liquidity Pools
+description: >-
+List liquidity pools that exist on the blockchain. The pool can be in a broken
+state, like having nearly no liquidity. Use the data returned by this endpoint
+to asses if the pool is worth investing into. Choose the aggregation interval
+to control both granularity and time range: DAILY (last 30 days), WEEKLY (last
+12 weeks), MONTHLY (last 12 months).
+full: true
+\_openapi:
+method: GET
+route: /api/v1/liquidity/pools
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: >-
+  List liquidity pools that exist on the blockchain. The pool can be in
+  a broken state, like having nearly no liquidity. Use the data returned
+  by this endpoint to asses if the pool is worth investing into. Choose
+  the aggregation interval to control both granularity and time range:
+  DAILY (last 30 days), WEEKLY (last 12 weeks), MONTHLY (last 12
+  months).
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/liquidity/pools","method":"get"}]} webhooks={[]} hasHead={false} />
+
+
+# Get Pool Historical Data
+URL: /docs/api-reference/liquidity-pools/getPoolHistoricalData
+Source: /app/apps/docs/content/docs/api-reference/liquidity-pools/getPoolHistoricalData.mdx
+
+Get detailed historical data for a specific pool including volume and fees over time
+
+***
+
+title: Get Pool Historical Data
+description: >-
+Get detailed historical data for a specific pool including volume and fees
+over time
+full: true
+\_openapi:
+method: GET
+route: /api/v1/liquidity/pools/{id}/historical-data
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: >-
+  Get detailed historical data for a specific pool including volume and
+  fees over time
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/liquidity/pools/{id}/historical-data","method":"get"}]} webhooks={[]} hasHead={false} />
+
+
+# Create Deposit Transaction
+URL: /docs/api-reference/smart-wallets/CreateEoaTransferOperationController_createTransferOperation_v1
+Source: /app/apps/docs/content/docs/api-reference/smart-wallets/CreateEoaTransferOperationController_createTransferOperation_v1.mdx
+
+This endpoint provides a transaction to be executed by an EOA to deposit funds into a smart wallet. This is a convenience endpoint to easily build a transfer to be executed by Metamask or any other EOA wallet
+
+***
+
+title: Create Deposit Transaction
+description: >-
+This endpoint provides a transaction to be executed by an EOA to deposit funds
+into a smart wallet. This is a convenience endpoint to easily build a transfer
+to be executed by Metamask or any other EOA wallet
+full: true
+\_openapi:
+method: POST
+route: /api/v1/wallets/{walletAddress}/deposit
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: >-
+  This endpoint provides a transaction to be executed by an EOA to
+  deposit funds into a smart wallet. This is a convenience endpoint to
+  easily build a transfer to be executed by Metamask or any other EOA
+  wallet
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/wallets/{walletAddress}/deposit","method":"post"}]} webhooks={[]} hasHead={false} />
+
+
+# Get Smart Wallet
+URL: /docs/api-reference/smart-wallets/GetAccountAbstractionAddressController_handle_v1
+Source: /app/apps/docs/content/docs/api-reference/smart-wallets/GetAccountAbstractionAddressController_handle_v1.mdx
+
+This endpoint retrieves the details of a user's smart wallet, including the date the wallet was registered with this project, or _null_ if it's not registered yet.
+
+***
+
+title: Get Smart Wallet
+description: >-
+This endpoint retrieves the details of a user's smart wallet, including the
+date the wallet was registered with this project, or *null* if it's not
+registered yet.
+full: true
+\_openapi:
+method: GET
+route: /api/v1/wallets/address
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: >-
+  This endpoint retrieves the details of a user's smart wallet,
+  including the date the wallet was registered with this project, or
+  *null* if it's not registered yet.
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/wallets/address","method":"get"}]} webhooks={[]} hasHead={false} />
+
+
+# Get Smart Wallet Portfolio
+URL: /docs/api-reference/smart-wallets/GetPortfolioByAddressController_getPortfolioByAddress_v1
+Source: /app/apps/docs/content/docs/api-reference/smart-wallets/GetPortfolioByAddressController_getPortfolioByAddress_v1.mdx
+
+Get the portfolio of a smart wallet by its account abstraction address. The portfolio is a list of the user's balances in different tokens.
+
+***
+
+title: Get Smart Wallet Portfolio
+description: >-
+Get the portfolio of a smart wallet by its account abstraction address. The
+portfolio is a list of the user's balances in different tokens.
+full: true
+\_openapi:
+method: GET
+route: /api/v1/wallets/{walletAddress}/portfolio
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: >-
+  Get the portfolio of a smart wallet by its account abstraction
+  address. The portfolio is a list of the user's balances in different
+  tokens.
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/wallets/{walletAddress}/portfolio","method":"get"}]} webhooks={[]} hasHead={false} />
+
+
+# Get Smart Wallets by Project
+URL: /docs/api-reference/smart-wallets/GetWalletsByProjectController_handle_v1
+Source: /app/apps/docs/content/docs/api-reference/smart-wallets/GetWalletsByProjectController_handle_v1.mdx
+
+This endpoint lists all the smart wallets of the project.
+
+***
+
+title: Get Smart Wallets by Project
+description: This endpoint lists all the smart wallets of the project.
+full: true
+\_openapi:
+method: GET
+route: /api/v1/wallets
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: This endpoint lists all the smart wallets of the project.
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/wallets","method":"get"}]} webhooks={[]} hasHead={false} />
+
+
+# Register Smart Wallet
+URL: /docs/api-reference/smart-wallets/RegisterWalletController_handle_v1
+Source: /app/apps/docs/content/docs/api-reference/smart-wallets/RegisterWalletController_handle_v1.mdx
+
+This endpoint registers a new smart wallet for a user, linking this wallet with your project. You can check if the wallet was already registered by checking the _registeredAt_ value from the _Check Smart Wallet_ endpoint.
+
+***
+
+title: Register Smart Wallet
+description: >-
+This endpoint registers a new smart wallet for a user, linking this wallet
+with your project. You can check if the wallet was already registered by
+checking the *registeredAt* value from the *Check Smart Wallet* endpoint.
+full: true
+\_openapi:
+method: POST
+route: /api/v1/wallets/register
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: >-
+  This endpoint registers a new smart wallet for a user, linking this
+  wallet with your project. You can check if the wallet was already
+  registered by checking the *registeredAt* value from the *Check Smart
+  Wallet* endpoint.
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/wallets/register","method":"post"}]} webhooks={[]} hasHead={false} />
+
+
+# Get Smart Wallet History
+URL: /docs/api-reference/smart-wallets/TransactionsController_transactionsApi_v1
+Source: /app/apps/docs/content/docs/api-reference/smart-wallets/TransactionsController_transactionsApi_v1.mdx
+
+This endpoint retrieves a historic list of transactions of a specified smart wallet with filters. it also returns transactions still pending execution on the blockchain.
+
+***
+
+title: Get Smart Wallet History
+description: >-
+This endpoint retrieves a historic list of transactions of a specified smart
+wallet with filters. it also returns transactions still pending execution on
+the blockchain.
+full: true
+\_openapi:
+method: GET
+route: /api/v1/wallets/{walletAddress}/history
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: >-
+  This endpoint retrieves a historic list of transactions of a specified
+  smart wallet with filters. it also returns transactions still pending
+  execution on the blockchain.
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/wallets/{walletAddress}/history","method":"get"}]} webhooks={[]} hasHead={false} />
+
+
+# Update Wallet Metadata
+URL: /docs/api-reference/smart-wallets/UpdateWalletMetadataController_handle_v1
+Source: /app/apps/docs/content/docs/api-reference/smart-wallets/UpdateWalletMetadataController_handle_v1.mdx
+
+This endpoint updates the metadata for a specific wallet. The metadata is merged with existing metadata if present.
+
+***
+
+title: Update Wallet Metadata
+description: >-
+This endpoint updates the metadata for a specific wallet. The metadata is
+merged with existing metadata if present.
+full: true
+\_openapi:
+method: PATCH
+route: /api/v1/wallets/{walletId}/metadata
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: >-
+  This endpoint updates the metadata for a specific wallet. The metadata
+  is merged with existing metadata if present.
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/wallets/{walletId}/metadata","method":"patch"}]} webhooks={[]} hasHead={false} />
+
+
+# Update Transaction Metadata
+URL: /docs/api-reference/smart-wallets/updateTransactionMetadata
+Source: /app/apps/docs/content/docs/api-reference/smart-wallets/updateTransactionMetadata.mdx
+
+Update the metadata of a transaction associated with a smart wallet.
+
+***
+
+title: Update Transaction Metadata
+description: Update the metadata of a transaction associated with a smart wallet.
+full: true
+\_openapi:
+method: PATCH
+route: /api/v1/wallets/transactions/{transactionId}/metadata
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: Update the metadata of a transaction associated with a smart wallet.
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/wallets/transactions/{transactionId}/metadata","method":"patch"}]} webhooks={[]} hasHead={false} />
+
+
+# Create Transfer
+URL: /docs/api-reference/transfers/CreateTransferOperationController_createTransferOperation_v1
+Source: /app/apps/docs/content/docs/api-reference/transfers/CreateTransferOperationController_createTransferOperation_v1.mdx
+
+This endpoint provides a real-time quote for a token transfer, including the estimated amount of the token, fees, and other relevant details.
+
+***
+
+title: Create Transfer
+description: >-
+This endpoint provides a real-time quote for a token transfer, including the
+estimated amount of the token, fees, and other relevant details.
+full: true
+\_openapi:
+method: POST
+route: /api/v1/crypto/transfer
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: >-
+  This endpoint provides a real-time quote for a token transfer,
+  including the estimated amount of the token, fees, and other relevant
+  details.
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/crypto/transfer","method":"post"}]} webhooks={[]} hasHead={false} />
+
+
+# Create Batch Operation
+URL: /docs/api-reference/user-operations/CreateBatchOperationController_createBatchOperation_v1
+Source: /app/apps/docs/content/docs/api-reference/user-operations/CreateBatchOperationController_createBatchOperation_v1.mdx
+
+An operation that can join transfers and swaps into a single operation.
+
+***
+
+title: Create Batch Operation
+description: An operation that can join transfers and swaps into a single operation.
+full: true
+\_openapi:
+method: POST
+route: /api/v1/crypto/batch-operations
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: >-
+  An operation that can join transfers and swaps into a single
+  operation.
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/crypto/batch-operations","method":"post"}]} webhooks={[]} hasHead={false} />
+
+
+# Create Custom User Operation
+URL: /docs/api-reference/user-operations/CreateCustomUserOperationController_create_v1
+Source: /app/apps/docs/content/docs/api-reference/user-operations/CreateCustomUserOperationController_create_v1.mdx
+
+Enables you to create custom user operations with full control over transaction parameters. User Operations are the transaction format used in Account Abstraction, they are blockchain transactions executed through smart wallets. This endpoint allows you to execute any smart contract function, transfer native tokens, or perform complex operations by defining your own method signatures, call data, and more.
+
+***
+
+title: Create Custom User Operation
+description: >-
+Enables you to create custom user operations with full control over
+transaction parameters. User Operations are the transaction format used in
+Account Abstraction, they are blockchain transactions executed through smart
+wallets. This endpoint allows you to execute any smart contract function,
+transfer native tokens, or perform complex operations by defining your own
+method signatures, call data, and more.
+full: true
+\_openapi:
+method: POST
+route: /api/v1/crypto/custom-user-operation
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: >-
+  Enables you to create custom user operations with full control over
+  transaction parameters. User Operations are the transaction format
+  used in Account Abstraction, they are blockchain transactions executed
+  through smart wallets. This endpoint allows you to execute any smart
+  contract function, transfer native tokens, or perform complex
+  operations by defining your own method signatures, call data, and
+  more.
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/crypto/custom-user-operation","method":"post"}]} webhooks={[]} hasHead={false} />
+
+
+# Execute User Operation
+URL: /docs/api-reference/user-operations/ExecuteUserOperationController_executeUserOp_v1
+Source: /app/apps/docs/content/docs/api-reference/user-operations/ExecuteUserOperationController_executeUserOp_v1.mdx
+
+This endpoint queues to execution a user operation on the blockchain, like a swap quote or a transfer. The execution occurs asynchronously as it waits to be included in a block. You can check the status by using the returned hash in the history endpoint or with our webhooks.
+
+***
+
+title: Execute User Operation
+description: >-
+This endpoint queues to execution a user operation on the blockchain, like a
+swap quote or a transfer. The execution occurs asynchronously as it waits to
+be included in a block. You can check the status by using the returned hash in
+the history endpoint or with our webhooks.
+full: true
+\_openapi:
+method: POST
+route: /api/v1/crypto/execute-user-op
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: >-
+  This endpoint queues to execution a user operation on the blockchain,
+  like a swap quote or a transfer. The execution occurs asynchronously
+  as it waits to be included in a block. You can check the status by
+  using the returned hash in the history endpoint or with our webhooks.
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/crypto/execute-user-op","method":"post"}]} webhooks={[]} hasHead={false} />
+
+
+# Get User Operation
+URL: /docs/api-reference/user-operations/GetUserOperationController_getUserOperation_v1
+Source: /app/apps/docs/content/docs/api-reference/user-operations/GetUserOperationController_getUserOperation_v1.mdx
+
+Get a user operation by its hash
+
+***
+
+title: Get User Operation
+description: Get a user operation by its hash
+full: true
+\_openapi:
+method: GET
+route: /api/v1/crypto/user-operation/{userOperationHash}
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: Get a user operation by its hash
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/crypto/user-operation/{userOperationHash}","method":"get"}]} webhooks={[]} hasHead={false} />
+
+
+# Create Swap
+URL: /docs/api-reference/swaps/CreateSwapOperationController_createSwapOperation_v1
+Source: /app/apps/docs/content/docs/api-reference/swaps/CreateSwapOperationController_createSwapOperation_v1.mdx
+
+This endpoint provides a real-time quote for a token swap, detailing the estimated destination token amount, fees, and other relevant parameters.
+
+***
+
+title: Create Swap
+description: >-
+This endpoint provides a real-time quote for a token swap, detailing the
+estimated destination token amount, fees, and other relevant parameters.
+full: true
+\_openapi:
+method: POST
+route: /api/v1/crypto/swap
+toc: \[]
+structuredData:
+headings: \[]
+contents:
+
+* content: >-
+  This endpoint provides a real-time quote for a token swap, detailing
+  the estimated destination token amount, fees, and other relevant
+  parameters.
+
+***
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+<APIPage document={"https://api.notus.team/openapi"} operations={[{"path":"/api/v1/crypto/swap","method":"post"}]} webhooks={[]} hasHead={false} />
+
+
+# MetaMask
+URL: /docs/guides/authentication/metamask
+Source: /app/apps/docs/content/docs/guides/authentication/metamask.mdx
+
+
+
+***
+
+## title: MetaMask
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+[MetaMask](https://metamask.io/) is one of the most widely used wallets for interacting with Ethereum-compatible blockchains.\
+It allows users to connect their existing accounts securely and sign messages using their own keys, providing full control over custody.
+
+<Callout>
+  <strong>Why combine MetaMask with Notus API?</strong><br />
+  By connecting MetaMask to Notus API, developers can:
+
+  <ul>
+    <li>Leverage a user's existing wallet for authentication</li>
+    <li>Register and manage smart wallets (ERC-4337)</li>
+    <li>Sign and execute onchain actions using Account Abstraction</li>
+    <li>Support gasless experiences with Paymasters</li>
+  </ul>
+
+  This enables Web3-native users to access advanced smart wallet features using their existing MetaMask accounts.
+</Callout>
+
+This guide demonstrates how to use MetaMask with the Notus API in a Next.js project.\
+You’ll connect a wallet, register a smart wallet, request a swap quote, and execute a UserOperation using `viem`.
+
+<Callout>
+  Eager to get started? Check out our [GitHub](https://github.com/notuslabs/notus-api-example/blob/main/app/connect-wallet-metamask.tsx) repository for a complete example and see how to integrate Notus API into your project.
+</Callout>
+
+## How to Use MetaMask with Notus API
+
+Let’s walk through the full integration step by step.
+
+<Steps>
+  <Step>
+    ### Start a Next.js Project
+
+    First, create a new Next.js project. Run the following command in your terminal:
+
+    ```package-install
+    npx create-next-app@latest
+    ```
+
+    This will scaffold a new Next.js application, setting up a basic React-based environment for building your dApp.
+  </Step>
+
+  <Step>
+    ### Install <code>viem</code>
+
+    We’ll use [`viem`](https://viem.sh/), a library for blockchain interactions, to simplify our integration. Install it by running:
+
+    ```package-install
+    npm i viem
+    ```
+  </Step>
+
+  <Step>
+    ### Connect to MetaMask with Viem
+
+    Now, let’s set up a connection to Metamask. This step allows users to connect their wallets and retrieve their account addresses. Add the following code to your App component:
+
+    ```tsx
+    "use client";
+
+    import { createWalletClient, custom } from "viem";
+    import { polygon } from "viem/chains";
+
+    export default function App() {
+      const [externallyOwnedAccount, setExternallyOwnedAccount] = useState("");
+
+      const account = createWalletClient({
+        chain: polygon,
+        transport: custom(window.ethereum!),
+      });
+
+      const requestAddress = async () => {
+        const [externallyOwnedAccount] = await account.requestAddresses();
+        if (externallyOwnedAccount) {
+          setExternallyOwnedAccount(externallyOwnedAccount);
+        }
+      };
+
+      return (
+        <div>
+          <button onClick={async () => await requestAddress()}>Metamask</button>
+        </div>
+      );
+    }
+    ```
+
+    **Explanation:**
+
+    * <code>createWalletClient</code> initializes the wallet connection.
+    * <code>requestAddresses</code> fetches the connected wallet's account address.
+    * The address is stored in the <code>externallyOwnedAccount</code> state for future use.
+  </Step>
+
+  <Step>
+    ### Register or Query a Smart Wallet
+
+    Use the connected MetaMask account (EOA) to register or query a smart wallet onchain using the Notus API:
+
+    ```tsx
+    const FACTORY_ADDRESS = "0xE77f2C7D79B2743d39Ad73DC47a8e9C6416aD3f3";
+
+    const getSmartWalletAddress = async (eoa: string) => {
+      let res = await fetch("https://<baseUrl>/api/v1/wallets/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": "<api-key>",
+        },
+        body: JSON.stringify({
+          externallyOwnedAccount: eoa,
+          factory: FACTORY_ADDRESS,
+          salt: "0",
+        }),
+      });
+
+      if (!res.ok) {
+        res = await fetch(
+          `https://<baseUrl>/api/v1/wallets/address?externallyOwnedAccount=${eoa}&factory=${FACTORY_ADDRESS}&salt=0`,
+          {
+            method: "GET",
+            headers: {
+              "x-api-key": "<api-key>",
+            },
+          }
+        );
+      }
+
+      const data = await res.json();
+      return data.wallet.accountAbstraction;
+    };
+    ```
+
+    <Callout>
+      A **Factory** is a smart contract responsible for creating smart wallets. It helps ensure that wallet addresses are consistent and predictable, even before the wallet is fully deployed. This simplifies wallet creation and management while maintaining compatibility with blockchain standards.
+
+      If you're new to the concept of factories, we recommend visiting the [What is a Factory?](/docs/guides/smart-wallets/what-is-smart-wallet#what-is-a-factory) page for a more detailed explanation.
+    </Callout>
+
+    **Explanation:**
+    This function interacts with the Notus API to either register or query a smart wallet based on the provided Externally Owned Account (EOA).
+
+    * The <code>salt</code> is a unique value that, when combined with the EOA and factory, generates a deterministic smart wallet address. If no salt is provided, the default value is zero. Each distinct salt creates a new smart wallet for the same EOA and factory, allowing flexibility while ensuring consistent and predictable address generation.
+    * The <code>POST</code> request is sent to register a smart wallet if it hasn’t been registered yet. The request uses the EOA, a factory address, and a salt value.
+    * If the <code>POST</code> request fails (e.g., because the wallet is already registered), a fallback <code>GET</code> request retrieves the existing smart wallet details.
+    * Once the smart wallet address is retrieved, it’s stored in the <code>accountAbstraction</code> state for further use.
+
+    <Callout>
+      Note: At this stage, the smart wallet address is not yet deployed onchain. Deployment happens automatically with the user's first onchain transaction (e.g., swap or transfer) via a UserOperation.
+    </Callout>
+  </Step>
+
+  <Step>
+    ### Generate a Swap Quote
+
+    Request a quote to swap tokens using the smart wallet:
+
+    ```tsx
+    const getSwapQuote = async ({
+      eoa,
+      accountAbstraction,
+    }: {
+      eoa: string;
+      accountAbstraction: string;
+    }) => {
+      const res = await fetch("https://<baseUrl>/api/v1/crypto/swap", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": "<api-key>",
+        },
+        body: JSON.stringify({
+          payGasFeeToken: "<token-address>",
+          tokenIn: "<token-address>",
+          tokenOut: "<token-address>",
+          amountIn: "5",
+          walletAddress: accountAbstraction,
+          toAddress: accountAbstraction,
+          signerAddress: eoa,
+          chainIdIn: 137,
+          chainIdOut: 137,
+          gasFeePaymentMethod: "DEDUCT_FROM_AMOUNT",
+        }),
+      });
+
+      return await res.json();
+    };
+    ```
+
+    <Callout>
+      To swap native tokens like ETH, BNB, or AVAX, use <code>0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee</code> as the token address.
+    </Callout>
+
+    <Callout>
+      Note: The <code>payGasFeeToken</code> field should contain the address of an ERC-20 token held in the smart wallet. This token will be used to pay both the partner’s <code>transactionFeePercent</code> and the gas fees for the UserOperation. In most cases, <code>payGasFeeToken</code> is the same as <code>token</code>, typically the token the user already holds in their wallet.
+    </Callout>
+
+    **Explanation:**
+
+    * The <code>swapParams</code> object contains details of the swap, including token addresses, wallet address, and fees.
+    * The Notus API returns a swap quote, which is stored in the <code>quote</code> state.
+  </Step>
+
+  <Step>
+    ### Sign and Execute the User Operation
+
+    Sign the quote using MetaMask and send the signed message to Notus for execution:
+
+    ```tsx
+    const signingAndExecute = async ({
+      eoa,
+      quoteId,
+    }: {
+      eoa: `0x${string}`;
+      quoteId: `0x${string}`;
+    }) => {
+      const signature = await account.signMessage({
+        account: eoa,
+        message: {
+          raw: quoteId,
+        },
+      });
+
+      const res = await fetch("https://<baseUrl>/api/v1/crypto/execute-user-op", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": "<api-key>",
+        },
+        body: JSON.stringify({
+          quoteId,
+          signature,
+        }),
+      });
+
+      return await res.json();
+    };
+    ```
+
+    <Callout>
+      A <strong>UserOperation</strong> is a pseudo-transaction used in Account Abstraction (ERC-4337).\
+      It is submitted to the EntryPoint contract by bundlers, allowing smart wallets to operate without traditional transactions or native gas.
+    </Callout>
+
+    **Explanation:**
+
+    * The quote is signed using the wallet’s private key.
+    * The signed operation is sent to Notus for execution, and the resulting hash <code>userOpHash</code> confirms the transaction.
+    * Signatures are validated on-chain, transactions won't be executed unless the EOA match
+  </Step>
+</Steps>
+
+
+# Overview
+URL: /docs/guides/authentication/overview
+Source: /app/apps/docs/content/docs/guides/authentication/overview.mdx
+
+
+
+***
+
+## title: Overview
+
+Traditional wallet authentication is a major friction point in Web3 adoption. Seed phrases are hard to manage and easy to lose, creating barriers for mainstream users. The **Notus API** removes that friction by enabling **social login flows** powered by **ERC-4337-compatible smart accounts**.
+
+With **Authentication**, developers can:
+
+* **Eliminate seed phrases** by allowing users to sign in with **Google, Apple ID**, or any supported identity provider.
+* **Improve security and accessibility** by combining account abstraction with familiar Web2 login experiences.
+* **Support account recovery mechanisms** through external authentication services or email-based fallback flows.
+* **Integrate with major auth providers** like **Web3Auth**, **Privy**, or **Dynamic**, simplifying implementation.
+
+This module is ideal for applications that require **fast onboarding, strong security, and user-friendly recovery**, making Web3 feel as smooth as Web2—without sacrificing decentralization.
+
+
+# Privy
+URL: /docs/guides/authentication/privy
+Source: /app/apps/docs/content/docs/guides/authentication/privy.mdx
+
+
+
+***
+
+## title: Privy
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+[Privy](https://privy.io/) is a simple, powerful library to connect users to your web3 product. It allows users to sign up with familiar Web2 methods (email, social logins) or connect their existing crypto wallets, providing a seamless onboarding experience.
+
+<Callout>
+  <strong>Why combine Privy with Notus API?</strong><br />
+  By integrating Privy with Notus API, developers can:
+
+  <ul>
+    <li>Offer flexible login options (email, social, wallet) for easy user onboarding.</li>
+    <li>Abstract away blockchain complexities, associating a smart wallet (ERC-4337) with each user seamlessly.</li>
+    <li>Enable gasless transactions and other Account Abstraction benefits via Notus API, signed using Privy's embedded wallets.</li>
+    <li>Securely manage user sessions and interactions, with Privy handling wallet creation/management and Notus API powering onchain actions.</li>
+  </ul>
+
+  This combination allows you to build user-friendly dApps that appeal to both Web2 and Web3 audiences.
+</Callout>
+
+This guide demonstrates how to use Privy with the Notus API in a Next.js App Router project. You'll learn how to authenticate a user, retrieve their Externally Owned Account (EOA), use that EOA to interact with Notus API via backend API Route Handlers to register a smart wallet, request a swap quote, and execute a UserOperation.
+
+<Callout>
+  Eager to get started? Check out our [Privy + Notus API Example on GitHub](https://github.com/notuslabs/notus-api-examples/tree/main/examples/privy-nextjs-notus-api) for a complete implementation using Next.js App Router.
+</Callout>
+
+## How to Use Privy with Notus API
+
+Let's walk through the full integration step by step, emphasizing that Notus API calls are made from your backend (Next.js API Route Handlers) for security and best practices.
+
+<Steps>
+  <Step>
+    ### 1. Start a Next.js Project
+
+    First, create a new Next.js project if you haven't already (ensure you are using the App Router, which is the default for recent versions of Next.js):
+
+    ```bash
+    npx create-next-app@latest my-privy-notus-app
+    cd my-privy-notus-app
+    ```
+  </Step>
+
+  <Step>
+    ### 2. Install Privy SDK
+
+    Install the Privy React SDK:
+
+    ```bash
+    npm install @privy-io/react-auth
+    ```
+  </Step>
+
+  <Step>
+    ### 3. Frontend: Create a Login Button
+
+    Create a simple client component for logging in and out with Privy. This will be used on your main page.
+
+    ```tsx title="app/components/PrivyLoginButton.tsx"
+    "use client";
+
+    import { usePrivy } from '@privy-io/react-auth';
+
+    export default function PrivyLoginButton() {
+      const { ready, authenticated, login, logout } = usePrivy();
+
+      // Wait for Privy to be ready before rendering
+      if (!ready) {
+        return null; 
+      }
+
+      return (
+        <div>
+          {authenticated ? (
+            <button onClick={logout}>
+              Log Out
+            </button>
+          ) : (
+            <button onClick={login}>
+              Log In with Privy
+            </button>
+          )}
+        </div>
+      );
+    }
+    ```
+  </Step>
+
+  <Step>
+    ### 4. Server-Side Authentication and Smart Wallet Management
+
+    Create a server-side authentication function that handles both Privy authentication and smart wallet management. This function will be used in your server components to get the authenticated user and their smart wallet address.
+
+    ```typescript title="app/auth.ts"
+    import { cookies } from "next/headers";
+    import { privy } from "./privy";
+    import { notusAPI, FACTORY_ADDRESS } from "./notusAPI";
+
+    // Server-side authentication function that handles Privy auth and smart wallet setup
+    export async function auth() {
+      try {
+        // Get Privy token from cookies
+        const { get } = await cookies();
+        const token = get("privy-id-token");
+
+        if (!token) {
+          return null;
+        }
+
+        // Get user from Privy
+        let user = await privy.getUser({ idToken: token.value });
+
+        // Create wallet if user doesn't have one
+        if (!user.wallet?.address) {
+          user = await privy.createWallets({
+            userId: user.id,
+            createEthereumWallet: true,
+          });
+        }
+
+        // Check if smart wallet exists
+        const { wallet } = await notusAPI
+          .get("wallets/address", {
+            searchParams: {
+              externallyOwnedAccount: user.wallet?.address as string,
+              factory: FACTORY_ADDRESS,
+            },
+          })
+          .json<{
+            wallet: { accountAbstraction: string; registeredAt: string | null };
+          }>();
+
+        // Register smart wallet if it doesn't exist
+        if (!wallet.registeredAt) {
+          await notusAPI.post("wallets/register", {
+            json: {
+              externallyOwnedAccount: user.wallet?.address as string,
+              factory: FACTORY_ADDRESS,
+              salt: "0",
+            },
+          });
+        }
+
+        // Return user with smart wallet address
+        return {
+          ...user,
+          accountAbstractionAddress: wallet.accountAbstraction,
+        };
+      } catch (error) {
+        console.error(error);
+        return null;
+      }
+    }
+    ```
+
+    Then, use this `auth()` function in your server components to get the authenticated user and their smart wallet address:
+
+    ```tsx title="app/page.tsx"
+    import { auth } from "./auth";
+    import { redirect } from "next/navigation";
+
+    export default async function Home() {
+      const user = await auth();
+
+      if (!user) {
+        redirect("/login");
+      }
+
+      return (
+        <main>
+          <h1>Welcome, {user.email}</h1>
+          <p>Your Smart Wallet: {user.accountAbstractionAddress}</p>
+          {/* Add your app content here */}
+        </main>
+      );
+    }
+    ```
+
+    <Callout>
+      The `auth()` function handles:
+
+      <ul>
+        <li>Retrieving the Privy ID token from cookies</li>
+        <li>Getting the user from Privy</li>
+        <li>Creating a wallet if the user doesn't have one</li>
+        <li>Checking if a smart wallet exists for the user's EOA</li>
+        <li>Registering a new smart wallet if needed</li>
+        <li>Returning the user with their smart wallet address</li>
+      </ul>
+
+      This approach is more secure as it keeps all authentication and wallet management logic on the server side.
+    </Callout>
+
+    <Callout>
+      Note: At this stage, the smart wallet address is not yet deployed onchain. Deployment happens automatically with the user's first onchain transaction (e.g., swap or transfer) via a UserOperation.
+    </Callout>
+  </Step>
+
+  <Step>
+    ### 5. Server-Side Transfer Quote Generation
+
+    Create a server action to handle transfer quote generation. This keeps the Notus API key secure on the server side.
+
+    ```typescript title="app/actions/transfer.ts"
+    "use server";
+
+    import { notusAPI } from "../notusAPI";
+
+    export async function getTransferQuote({
+      eoa,
+      smartWalletAddress,
+      toAddress,
+      token,
+      amount,
+      chainId = 137, // Example: Polygon
+    }: {
+      eoa: string;
+      smartWalletAddress: string;
+      toAddress: string;
+      token: string;
+      amount: string;
+      chainId?: number;
+    }) {
+      try {
+        const response = await notusAPI.post("crypto/transfer", {
+          json: {
+            amount: String(amount),
+            chainId: Number(chainId),
+            gasFeePaymentMethod: "ADD_TO_AMOUNT",
+            payGasFeeToken: token,
+            token,
+            walletAddress: smartWalletAddress,
+            toAddress,
+            transactionFeePercent: 0,
+          },
+        }).json();
+
+        return { success: true, data: response };
+      } catch (error: any) {
+        console.error("Error getting transfer quote:", error);
+        return { success: false, error: error.message || "Failed to get transfer quote" };
+      }
+    }
+    ```
+
+    <Callout>
+      To transfer native tokens (e.g., MATIC on Polygon), use `0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee` as the token address.
+    </Callout>
+
+    <Callout>
+      Note: The <code>payGasFeeToken</code> field should contain the address of an ERC-20 token held in the smart wallet. This token will be used to pay both the partner’s <code>transactionFeePercent</code> and the gas fees for the UserOperation. In most cases, <code>payGasFeeToken</code> is the same as <code>token</code>, typically the token the user already holds in their wallet.
+    </Callout>
+  </Step>
+
+  <Step>
+    ### 6. Server-Side User Operation Execution
+
+    Create a server action to handle the execution of user operations. This is where the magic happens - after getting a quote and signing it with Privy, we send the signature to Notus API to execute the transaction.
+
+    ```typescript title="app/actions/execute.ts"
+    "use server";
+
+    export async function executeUserOperation({
+      quoteId,
+      signature,
+    }: {
+      quoteId: string;
+      signature: string;
+    }) {
+      try {
+        const response = await fetch("https://api.notus.team/api/v1/crypto/execute-user-op", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            quoteId,
+            signature,
+          }),
+        });
+
+        const data = await response.json();
+        return { success: true, data };
+      } catch (error: any) {
+        console.error("Error executing user operation:", error);
+        return { success: false, error: error.message || "Failed to execute user operation" };
+      }
+    }
+    ```
+
+    <Callout>
+      **How User Operation Execution Works:**
+
+      1. The `quoteId` from the transfer/swap quote is signed using Privy's `signMessage`
+      2. The signature is sent to Notus API's `/execute-user-op` endpoint
+      3. Notus API verifies the signature matches the EOA that created the quote
+      4. If valid, Notus API creates and submits a UserOperation - a special transaction format for smart contract wallets
+      5. The transaction is executed through Account Abstraction (ERC-4337)
+    </Callout>
+  </Step>
+
+  <Step>
+    ### 7. Frontend: Transfer Execution Component
+
+    Create a client component that handles the transfer execution process, using the server action for quote generation and Privy for message signing.
+
+    ```tsx title="app/components/TransferExecutor.tsx"
+    "use client";
+
+    import { useSignMessage } from '@privy-io/react-auth';
+    import { useState } from 'react';
+    import { getTransferQuote } from '../actions/transfer';
+
+    export default function TransferExecutor({ eoa, smartWalletAddress }: { eoa: string; smartWalletAddress: string; }) {
+      const [quoteId, setQuoteId] = useState<string | null>(null);
+      const [isLoading, setIsLoading] = useState(false);
+      const [error, setError] = useState<string | null>(null);
+      const [userOpHash, setUserOpHash] = useState<string | null>(null);
+
+      const { signMessage } = useSignMessage({
+        onSuccess: async (signature) => {
+          if (!quoteId) return;
+          await executeTransaction(quoteId, signature);
+        },
+        onError: (error) => {
+          setError("Failed to sign message");
+          setIsLoading(false);
+        }
+      });
+
+      const handleTransfer = async () => {
+        setIsLoading(true);
+        setError(null);
+        
+        try {
+          const result = await getTransferQuote({
+            eoa,
+            smartWalletAddress,
+            toAddress: "0x123...",
+            token: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174", // USDC
+            amount: "1",
+            chainId: 137,
+          });
+
+          if (!result.success) throw new Error(result.error);
+          
+          setQuoteId(result.data.quoteId);
+          await signMessage(result.data.quoteId);
+        } catch (error) {
+          setError(error instanceof Error ? error.message : "Transfer failed");
+          setIsLoading(false);
+        }
+      };
+
+      const executeTransaction = async (quoteId: string, signature: string) => {
+        try {
+          const response = await fetch('/api/notus/execute-op', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ quoteId, signature }),
+          });
+          
+          const result = await response.json();
+          if (!response.ok) throw new Error("Transaction failed");
+          
+          setUserOpHash(result.userOpHash);
+        } catch (error) {
+          setError(error instanceof Error ? error.message : "Execution failed");
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      return (
+        <div>
+          <button onClick={handleTransfer} disabled={isLoading || !eoa}>
+            {isLoading ? 'Processing...' : 'Transfer 1 USDC'}
+          </button>
+          {quoteId && <p>Quote ID: {quoteId}</p>}
+          {userOpHash && <p>UserOp Hash: {userOpHash}</p>}
+          {error && <p style={{ color: 'red' }}>{error}</p>}
+        </div>
+      );
+    }
+    ```
+  </Step>
+</Steps>
+
+That's it! You've successfully integrated Privy authentication with Notus for gasless transactions. You can now build powerful web3 applications with a seamless user experience.
+
+If you have any questions, make sure to check out Privy's [documentation](https://docs.privy.io/basics/react/installation) and join their [Discord community](https://discord.com/invite/privy) for support.
+
+
+# Web3Auth
+URL: /docs/guides/authentication/web3auth
+Source: /app/apps/docs/content/docs/guides/authentication/web3auth.mdx
+
+
+
+***
+
+## title: Web3Auth
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+[Web3Auth](https://web3auth.io/) enables social login flows for Web3 using familiar credentials like Google, Apple ID, and email.
+It abstracts away private key management, making it easier to onboard mainstream users into decentralized applications.
+
+<Callout>
+  <strong>Why combine Web3Auth with Notus API?</strong><br />
+  By integrating with Notus API, you can turn a Web3Auth login into a fully functional, gasless smart wallet experience:
+
+  <ul>
+    <li>Authenticate users with social login</li>
+    <li>Create and register ERC-4337 smart wallets</li>
+    <li>Eliminate seed phrases and manual wallet management</li>
+    <li>Sponsor gas fees with Paymasters or allow ERC-20 token payments</li>
+  </ul>
+
+  This allows users to sign in with a Google account and immediately use onchain features without buying tokens or installing wallets.
+</Callout>
+
+This guide will help you integrate Notus API with Web3Auth in a Next.js project. By the end of this tutorial, you will set up Web3Auth, retrieve the user's wallet, register a Smart Wallet, generate a swap quote, and execute a UserOperation.
+
+<Callout>
+  Eager to get started? Check out our [GitHub](https://github.com/notuslabs/notus-api-example/tree/main/app/web3auth) repository for a complete example and see how to integrate Notus API into your project.
+</Callout>
+
+## How to Use Web3Auth with Notus API
+
+Let’s walk through the full integration step by step.
+
+<Steps>
+  <Step>
+    ### Start a Next.js Project
+
+    First, create a new Next.js project. Run the following command in your terminal:
+
+    ```package-install
+    npx create-next-app@latest
+    ```
+
+    This will scaffold a new Next.js application, setting up a basic React-based environment for building your dApp.
+  </Step>
+
+  <Step>
+    ### Install <code>viem</code>
+
+    We’ll use viem, a library for blockchain interactions, to simplify our integration. Install it by running:
+
+    ```package-install
+    npm i viem
+    ```
+  </Step>
+
+  <Step>
+    ### Install <code>web3Auth</code>
+
+    ```package-install
+    npm i @web3auth/base @web3auth/ethereum-provider @web3auth/modal
+    ```
+  </Step>
+
+  <Step>
+    ### Simple Web3Auth Setup
+
+    Configure Web3Auth by initializing the required modules and settings. Replace clientId with your actual Web3Auth client ID.
+
+    ```tsx
+    import { CHAIN_NAMESPACES, WEB3AUTH_NETWORK } from "@web3auth/base";
+    import { EthereumPrivateKeyProvider } from "@web3auth/ethereum-provider";
+    import { Web3Auth, Web3AuthOptions } from "@web3auth/modal";
+
+    const clientId =
+      "BPi5PB_UiIZ-cPz1GtV5i1I2iOSOHuimiXBI0e-Oe_u6X3oVAbCiAZOTEBtTXw4tsluTITPqA8zMsfxIKMjiqNQ";
+
+    const chainConfig = {
+      chainNamespace: CHAIN_NAMESPACES.EIP155,
+      chainId: "0xaa36a7",
+      rpcTarget: "https://rpc.ankr.com/eth_sepolia",
+      ticker: "ETH",
+      tickerName: "Ethereum",
+      logo: "https://cryptologos.cc/logos/ethereum-eth-logo.png",
+    };
+
+    const privateKeyProvider = new EthereumPrivateKeyProvider({
+      config: { chainConfig },
+    });
+
+    const web3AuthOptions: Web3AuthOptions = {
+      clientId,
+      web3AuthNetwork: WEB3AUTH_NETWORK.SAPPHIRE_MAINNET,
+      privateKeyProvider,
+    };
+
+    const web3auth = new Web3Auth(web3AuthOptions);
+
+    export default function App() {
+    //...//
+    }
+    ```
+  </Step>
+
+  <Step>
+    ### Initialize Web3Auth
+
+    Initialize Web3Auth to manage user sessions and connect to the blockchain.
+
+    ```tsx
+    import { useEffect, useState } from "react";
+    import { createWalletClient } from "viem";
+
+    export default function App() {
+      const [account, setAccount] = useState<any | null>(null);
+      const [loggedIn, setLoggedIn] = useState(false);
+      const [externallyOwnedAccount, setExternallyOwnedAccount] = useState("");
+
+      useEffect(() => {
+        const init = async () => {
+          try {
+            await web3auth.initModal();
+            if (!web3auth.provider) {
+              return;
+            }
+            const account = createWalletClient({
+              chain: polygon,
+              transport: custom(web3auth.provider),
+            });
+
+            const [address] = await account.getAddresses();
+
+            setExternallyOwnedAccount(address);
+
+            setAccount(account);
+
+            if (web3auth.connected) {
+              setLoggedIn(true);
+            }
+          } catch (error) {
+            console.error(error);
+          }
+        };
+
+        init();
+      }, []);
+
+      //....//
+    }
+    ```
+  </Step>
+
+  <Step>
+    ### Login with Web3Auth
+
+    Allow users to log in with Web3Auth and retrieve their externally owned account (EOA).
+
+    ```tsx
+    import { polygon } from "viem/chains";
+
+
+    const web3auth = new Web3Auth(web3AuthOptions);
+
+    export default function App() {
+      const [account, setAccount] = useState<any | null>(null);
+      const [loggedIn, setLoggedIn] = useState(false);
+      const [externallyOwnedAccount, setExternallyOwnedAccount] = useState("");
+
+      const login = async () => {
+        const web3authProvider = await web3auth.connect();
+        if (!web3authProvider) {
+          return;
+        }
+        const account = createWalletClient({
+          chain: polygon,
+          transport: custom(web3authProvider),
+        });
+        const [address] = await account.getAddresses();
+
+        setExternallyOwnedAccount(address);
+
+        setAccount(account);
+        if (web3auth.connected) {
+          setLoggedIn(true);
+        }
+      };
+
+      return <button onClick={login}>Login</button>;
+    }
+    ```
+  </Step>
+
+  <Step>
+    ### Register or Query a Smart Wallet
+
+    Using the externally owned account (EOA) retrieved in the previous step, we can register or fetch the corresponding smart wallet details (Account Abstraction).
+
+    ```tsx
+    "use client";
+    //...//
+    export default function App() {
+      const [accountAbstraction, setAccountAbstraction] = useState("");
+
+      //.....//
+
+      const getSmartWalletAddress = async () => {
+        const FACTORY_ADDRESS = "0x0000000000400CdFef5E2714E63d8040b700BC24";
+        let res = await fetch(`https://<baseUrl>/api/v1/wallets/register`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": "<api-key>",
+          },
+          body: JSON.stringify({
+            externallyOwnedAccount: externallyOwnedAccount,
+            factory: FACTORY_ADDRESS,
+            salt: "0",
+          }),
+        });
+        if (!res?.ok) {
+          res = await fetch(
+            `https://<baseUrl>/api/v1/wallets/address?externallyOwnedAccount=${externallyOwnedAccount}&factory=${FACTORY_ADDRESS}&salt=${0}`,
+            {
+              method: "GET",
+              headers: {
+                "x-api-key": "<api-key>",
+              },
+            }
+          );
+        }
+
+        const data = await res.json();
+        setAccountAbstraction(data.wallet.accountAbstraction);
+      };
+
+      return (
+        <button onClick={() => getSmartWalletAddress()}>Get SmartWallet</button>
+      );
+    }
+    ```
+
+    <Callout>
+      A **Factory** is a smart contract responsible for creating smart wallets. It helps ensure that wallet addresses are consistent and predictable, even before the wallet is fully deployed. This simplifies wallet creation and management while maintaining compatibility with blockchain standards.
+
+      If you're new to the concept of factories, we recommend visiting the [What is a Factory?](/docs/guides/smart-wallets/what-is-smart-wallet#what-is-a-factory) page for a more detailed explanation.
+    </Callout>
+
+    **Explanation:**
+
+    This function interacts with the Notus API to either register or query a smart wallet based on the provided Externally Owned Account (EOA).
+
+    * The <code>salt</code> is a unique value that, when combined with the EOA and factory, generates a deterministic smart wallet address. If no salt is provided, the default value is zero. Each distinct salt creates a new smart wallet for the same EOA and factory, allowing flexibility while ensuring consistent and predictable address generation.
+
+    * The <code>POST</code> request is sent to register a smart wallet if it hasn’t been registered yet. The request uses the EOA, a factory address, and a salt value.
+
+    * If the <code>POST</code> request fails (e.g., because the wallet is already registered), a fallback <code>GET</code> request retrieves the existing smart wallet details.
+
+    * Once the smart wallet address is retrieved, it’s stored in the <code>accountAbstraction</code> state for further use.
+
+    <Callout>
+      Note: At this stage, the smart wallet address is not yet deployed onchain. Deployment happens automatically with the user's first onchain transaction (e.g., swap or transfer) via a UserOperation.
+    </Callout>
+  </Step>
+
+  <Step>
+    ### Generate a Swap Quote
+
+    Next, let’s request a swap quote for exchanging tokens:
+
+    ```tsx
+    "use client";
+
+    import { polygon } from "viem/chains";
+
+    //...//
+    export default function App() {
+      const [accountAbstraction, setAccountAbstraction] = useState("");
+      const [externallyOwnedAccount, setExternallyOwnedAccount] = useState("");
+
+      const [quote, setQuote] = useState<any>();
+
+
+      //...//
+
+      const getSwapQuote = async () => {
+        const swapParams = {
+          payGasFeeToken: "<token-address>",
+          tokenIn: "<token-address>",
+          tokenOut: "<token-address>",
+          amountIn: "5",
+          walletAddress: accountAbstraction,
+          toAddress: accountAbstraction,
+          signerAddress: externallyOwnedAccount,
+          chainIdIn: polygon.id,
+          chainIdOut: polygon.id,
+          gasFeePaymentMethod: "DEDUCT_FROM_AMOUNT",
+        };
+        const res = await fetch("https://<baseUrl>/api/v1/crypto/swap", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": "<api-key>",
+          },
+          body: JSON.stringify(swapParams),
+        });
+
+        if (!res.ok) return;
+
+        const data = (await res.json()) as SwapQuote;
+
+
+        setQuote(data);
+      };
+
+      return <button onClick={() => getSwapQuote()}>Swap Quote</button>;
+    }
+    ```
+
+    <Callout>
+      If you are swapping from a native token (e.g., ETH, BNB, AVAX), use the following address as <code>tokenIn: 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee</code>. This ensures that the Notus API recognizes the asset as a native token.
+    </Callout>
+
+    **Explanation:**
+
+    The <code>swapParams</code> object contains details of the swap, including token addresses, wallet address, and fees.
+
+    The Notus API returns a swap <code>quote</code>, which is stored in the quote state.
+
+    <Callout>
+      Note: The <code>payGasFeeToken</code> field should contain the address of an ERC-20 token held in the smart wallet. This token will be used to pay both the partner’s <code>transactionFeePercent</code> and the gas fees for the UserOperation. In most cases, <code>payGasFeeToken</code> is the same as <code>token</code>, typically the token the user already holds in their wallet.
+    </Callout>
+  </Step>
+
+  <Step>
+    ### Sign and Execute the User Operation
+
+    Finally, let’s sign the swap quote and execute the User Operation:
+
+    <Callout>
+      A **UserOperation** is a pseudo-transaction used in Account Abstraction (ERC-4337). It defines actions for a smart contract account to execute and is sent to a dedicated mempool, where bundlers group and forward these operations to the EntryPoint contract for validation and execution. Unlike traditional transactions, it offers greater flexibility, such as paying fees in tokens or executing custom logic.
+    </Callout>
+
+    ```tsx
+    export default function App() {
+      const [account, setAccount] = useState<any | null>(null);
+      const [externallyOwnedAccount, setExternallyOwnedAccount] = useState("");
+
+      const [quote, setQuote] = useState<any>();
+      const [txHash, setTxHash] = useState("");
+
+
+      const signingAndExecute = async () => {
+        if (!quote?.swap.quoteId) return;
+
+        const quoteId = quote.swap.quoteId;
+
+        const signature = await account.signMessage({
+          account: externallyOwnedAccount,
+          message: {
+            raw: quoteId,
+          },
+        });
+
+        const res = await fetch("https://<baseUrl>/api/v1/crypto/execute-user-op", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": "<api-key>",
+          },
+          body: JSON.stringify({
+            quoteId,
+            signature,
+          }),
+        });
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+
+        setTxHash(data.userOpHash);
+      };
+
+      console.log(txHash);
+
+      return (
+        <button onClick={() => signingAndExecute()}>
+          Signing user operation and execute
+        </button>
+      );
+    }
+    ```
+
+    **Explanation:**
+
+    The quote is signed using the wallet’s private key.
+
+    The signed operation is sent to Notus for execution, and the resulting hash (**userOpHash**) confirms the transaction.
+
+    Signatures are validated on-chain, transactions won't be executed unless the EOA match
+  </Step>
+</Steps>
+
+
+# Overview
+URL: /docs/guides/gasless-transaction-abstraction/overview
+Source: /app/apps/docs/content/docs/guides/gasless-transaction-abstraction/overview.mdx
+
+Gasless & Transaction Abstraction
+
+***
+
+title: Overview
+description: Gasless & Transaction Abstraction
+----------------------------------------------
+
+Interacting with blockchain networks often involves **complex and costly transactions**, requiring users to manage gas fees, approve multiple operations, and handle native tokens just to execute basic actions. **Gasless & Transaction Abstraction** eliminates these pain points by leveraging **ERC-4337 paymasters, batch transactions, and session keys**, enabling a seamless, cost-efficient, and automated transaction experience.
+
+With **Gasless & Transaction Abstraction**, developers can:
+
+* **Eliminate Gas Fee Friction** – Enable **gasless transactions** using **integrated Paymasters**, allowing users to interact with the blockchain without holding native tokens.
+* **Flexible Gas Payment Options** – Let users **pay gas fees with ERC-20 tokens**, removing the dependency on network-native assets.
+* **Streamline Transactions** – Use **batch transactions** to bundle multiple operations into a **single execution**, reducing approval steps and enhancing UX.
+* **Automate Workflows** – Implement **session keys** to pre-authorize transactions for automated processes without requiring repeated user approvals.
+
+
+# Send Your First Transaction
+URL: /docs/guides/gasless-transaction-abstraction/send-transaction
+Source: /app/apps/docs/content/docs/guides/gasless-transaction-abstraction/send-transaction.mdx
+
+Step-by-step guide to transferring tokens with the Notus API.
+
+***
+
+title: Send Your First Transaction
+description: Step-by-step guide to transferring tokens with the Notus API.
+--------------------------------------------------------------------------
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+## Steps
+
+<Steps>
+  <Step>
+    ### Create a directory
+
+    ```
+    mkdir my-transfer
+    cd my-transfer
+    touch index.js
+    ```
+  </Step>
+
+  <Step>
+    ### Init project
+
+    ```package-install
+    npm init -y
+    ```
+  </Step>
+
+  <Step>
+    ### Install <code>viem</code>
+
+    We’ll use viem, a library for blockchain interactions, to simplify our integration. Install it by running:
+
+    ```package-install
+    npm i viem
+    ```
+  </Step>
+
+  <Step>
+    ### Initialize Wallet Account
+
+    Use your private key to initialize a wallet account. This will allow you to sign messages and interact with the blockchain.
+
+    ```js
+    import { privateKeyToAccount } from 'viem/accounts'
+
+    const BASE_URL = "https://api.notus.team/api/v1"
+    const API_KEY = "<api-key>"
+
+    const UNI_POLYGON = '0xb33eaad8d922b1083446dc23f610c2567fb5180f'
+    const USDC_POLYGON = '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359' 
+
+    const privateKey = '0x<private-key>'
+    const account = privateKeyToAccount(privateKey)
+    ```
+  </Step>
+
+  <Step>
+    ### Register a Smart Wallet Address
+
+    Before initiating a cross-chain swap, register and retrieve the smart wallet address used for Account Abstraction.
+
+    ```js
+    async function main() {
+      const FACTORY_ADDRESS = "0x0000000000400CdFef5E2714E63d8040b700BC24"
+      const externallyOwnedAccount = account.address
+
+      const res = await fetch(`${BASE_URL}/wallets/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": API_KEY,
+        },
+        body: JSON.stringify({
+          externallyOwnedAccount: externallyOwnedAccount,
+          factory: FACTORY_ADDRESS,
+          salt: "0",
+        }),
+      });
+
+      if (!res?.ok) {
+        return
+      }
+
+      const response = await res.json();
+
+      const smartWalletAddress = response.wallet.accountAbstraction
+    }
+    ```
+
+    <Callout>
+      Note: At this stage, the smart wallet address is not yet deployed onchain. Deployment happens automatically with the user's first onchain transaction (e.g., swap or transfer) via a UserOperation.
+    </Callout>
+  </Step>
+
+  <Step>
+    ### Request Transfer
+
+    Send the transfer request to the Notus API to get a quote for executing the transfer.
+    Define the parameters for your transfer, specifying the token, amount, sender's address, and recipient's address.
+
+    ```js
+
+    const { data } = await fetch(`${BASE_URL}/crypto/transfer`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+      },
+      body: JSON.stringify(
+        {
+          payGasFeeToken: USDC_POLYGON, // Token used to pay gas fees
+          token: UNI_POLYGON,        // Token to transfer
+          amount: '5',               // Amount to transfer
+          walletAddress: smartWalletAddress, // Sender's wallet
+          signerAddress: externallyOwnedAccount, // Signer's address
+          toAddress: '0x<recipient-address>', // Replace <recipient-address> with the recipient's wallet
+          chainId: 137,          // Blockchain network
+          gasFeePaymentMethod: 'DEDUCT_FROM_AMOUNT', // Fee payment method
+        }
+      ),
+    }).then((res) => res.json());
+    ```
+
+    <Callout>
+      Note: The <code>payGasFeeToken</code> field should contain the address of an ERC-20 token held in the smart wallet. This token will be used to pay both the partner’s <code>transactionFeePercent</code> and the gas fees for the UserOperation. In most cases, <code>payGasFeeToken</code> is the same as <code>token</code>, typically the token the user already holds in their wallet.
+    </Callout>
+  </Step>
+
+  <Step>
+    ### Execute Transfer
+
+    Sign the transfer quote and execute the transfer using the Notus API.
+
+    ```js
+      const signature = await account.signMessage({
+        message: {
+          raw: data.quoteId, // Quote ID from the transfer quote
+        },
+      })
+
+      const { userOpHash } = await fetch(`${BASE_URL}/crypto/execute-user-op`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': API_KEY,
+        },
+        body: JSON.stringify({ signature, quoteId: data.quoteId }),
+      }).then((res) => res.json())
+
+      console.log(userOpHash)
+    ```
+  </Step>
+</Steps>
+
+
+# Kernel
+URL: /docs/guides/smart-wallets/kernel
+Source: /app/apps/docs/content/docs/guides/smart-wallets/kernel.mdx
+
+
+
+***
+
+## title: Kernel
+
+## Kernel Account Factory Compatibility
+
+In addition to supporting **LightAccount**, the **Notus API** is also compatible with Kernel Account. Kernel is a minimal and extensible smart contract account designed for ERC-4337 wallets, offering a modular architecture that allows developers to customize and enhance wallet functionalities through plugins.
+
+### Key Features of Kernel Account
+
+* **ERC-4337 Compatibility:** Fully adheres to the ERC-4337 standard, ensuring seamless integration within the account abstraction ecosystem.
+
+* **Modular Design:** Supports the addition of plugins, enabling developers to extend wallet capabilities without modifying the core contract.
+
+* **Gas Efficiency:** Engineered to optimize gas consumption during wallet operations, reducing transaction costs for users.
+
+### Security and Audits
+
+The **Kernel Account** has undergone thorough security audits to ensure its robustness and reliability. You can review the **audit reports** [here](https://github.com/zerodevapp/kernel/tree/dev/audits).
+
+### Factory Deployments
+
+The **Kernel Account Factory** has been deployed across multiple chains, ensuring deterministic wallet addresses and consistent behavior. For a comprehensive list of deployment addresses and supported networks, visit this [page](https://contractscan.xyz/contract/0x7a1dBAB750f12a90EB1B60D2Ae3aD17D4D81EfFe).
+
+### Additional Resources
+
+For more details on **Kernel Account’s** architecture, updates, and developer documentation, visit the [Kernel GitHub Repository](https://github.com/zerodevapp/kernel).
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+## How to create a Kernel Account with Notus API
+
+<Steps>
+  <Step>
+    ### Create a directory
+
+    ```
+    mkdir my-smart-wallet
+    cd my-smart-wallet
+    touch index.js
+    ```
+  </Step>
+
+  <Step>
+    ### Init project
+
+    ```package-install
+    npm init -y
+    ```
+  </Step>
+
+  <Step>
+    ### Install <code>viem</code>
+
+    We’ll use viem, a library for blockchain interactions, to simplify our integration. Install it by running:
+
+    ```package-install
+    npm i viem
+    ```
+  </Step>
+
+  <Step>
+    ### Initialize Wallet Account
+
+    Use your private key to initialize a wallet account. This will allow you to sign messages and interact with the blockchain.
+
+    ```js
+    import { privateKeyToAccount } from 'viem/accounts'
+
+    const BASE_URL = "https://api.notus.team/api/v1"
+    const API_KEY = "<api-key>"
+
+    const privateKey = '0x<private-key>'
+    const account = privateKeyToAccount(privateKey)
+    ```
+  </Step>
+
+  <Step>
+    ### Register a Smart Wallet Address
+
+    Register and retrieve the smart wallet address used for Account Abstraction.
+
+    ```js
+    async function main() {
+      const FACTORY_ADDRESS = "0x7a1dBAB750f12a90EB1B60D2Ae3aD17D4D81EfFe"
+      const externallyOwnedAccount = account.address
+
+      const res = await fetch(`${BASE_URL}/wallets/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": API_KEY,
+        },
+        body: JSON.stringify({
+          externallyOwnedAccount: externallyOwnedAccount,
+          factory: FACTORY_ADDRESS,
+          salt: "0",
+        }),
+      });
+
+      if (!res?.ok) {
+        return
+      }
+
+      const response = await res.json();
+
+      const smartWalletAddress = response.wallet.accountAbstraction
+    }
+    ```
+
+    <Callout>
+      Note: At this stage, the smart wallet address is not yet deployed onchain. Deployment happens automatically with the user's first onchain transaction (e.g., swap or transfer) via a UserOperation.
+    </Callout>
+  </Step>
+</Steps>
+
+
+# Light Account
+URL: /docs/guides/smart-wallets/light-account
+Source: /app/apps/docs/content/docs/guides/smart-wallets/light-account.mdx
+
+
+
+***
+
+## title: Light Account
+
+## LightAccount Factory Compatibility
+
+The Notus API supports a standard Factory implementation called LightAccount (v2.0.0). This implementation adheres to the best practices of ERC-4337 and ensures seamless integration with the Notus API’s suite of tools and features.
+
+### Key Features of LightAccount (v2.0.0):
+
+* **Standardized Compatibility:** Fully compatible with the ERC-4337 specification, ensuring smooth wallet deployment.
+
+* **Gas Optimization:** Uses an efficient design to minimize gas costs during wallet creation.
+
+* **Multi-Chain Consistency:** Enables deterministic wallet addresses across all supported chains, providing a unified user experience.
+
+### Security and Audits
+
+The **LightAccount Factory (v2.0.0)** has undergone a thorough security audit to ensure its reliability and robustness. You can review the **audit report** [here](https://github.com/alchemyplatform/light-account/tree/develop/audits).
+
+### Factory Deployments
+
+The **LightAccount Factory** is deployed across multiple chains, ensuring cross-chain compatibility and deterministic wallet addresses. You can find the **list of deployed addresses** [here](https://accountkit.alchemy.com/smart-contracts/deployed-addresses#lightaccount-v200).
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+## How to create a Light Account with Notus API
+
+<Steps>
+  <Step>
+    ### Create a directory
+
+    ```
+    mkdir my-smart-wallet
+    cd my-smart-wallet
+    touch index.js
+    ```
+  </Step>
+
+  <Step>
+    ### Init project
+
+    ```package-install
+    npm init -y
+    ```
+  </Step>
+
+  <Step>
+    ### Install <code>viem</code>
+
+    We’ll use viem, a library for blockchain interactions, to simplify our integration. Install it by running:
+
+    ```package-install
+    npm i viem
+    ```
+  </Step>
+
+  <Step>
+    ### Initialize Wallet Account
+
+    Use your private key to initialize a wallet account. This will allow you to sign messages and interact with the blockchain.
+
+    ```js
+    import { privateKeyToAccount } from 'viem/accounts'
+
+    const BASE_URL = "https://api.notus.team/api/v1"
+    const API_KEY = "<api-key>"
+
+    const privateKey = '0x<private-key>'
+    const account = privateKeyToAccount(privateKey)
+    ```
+  </Step>
+
+  <Step>
+    ### Register a Smart Wallet Address
+
+    Register and retrieve the smart wallet address used for Account Abstraction.
+
+    ```js
+    async function main() {
+      const FACTORY_ADDRESS = "0x0000000000400CdFef5E2714E63d8040b700BC24"
+      const externallyOwnedAccount = account.address
+
+      const res = await fetch(`${BASE_URL}/wallets/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": API_KEY,
+        },
+        body: JSON.stringify({
+          externallyOwnedAccount: externallyOwnedAccount,
+          factory: FACTORY_ADDRESS,
+          salt: "0",
+        }),
+      });
+
+      if (!res?.ok) {
+        return
+      }
+
+      const response = await res.json();
+
+      const smartWalletAddress = response.wallet.accountAbstraction
+    }
+    ```
+
+    <Callout>
+      Note: At this stage, the smart wallet address is not yet deployed onchain. Deployment happens automatically with the user's first onchain transaction (e.g., swap or transfer) via a UserOperation.
+    </Callout>
+  </Step>
+</Steps>
+
+
+# Overview
+URL: /docs/guides/smart-wallets/overview
+Source: /app/apps/docs/content/docs/guides/smart-wallets/overview.mdx
+
+
+
+***
+
+## title: Overview
+
+Creating and managing wallets onchain is often complex, requiring custom infrastructure, manual deployment, and direct interaction with smart contracts. The Smart Wallet module of the Notus API simplifies this process by leveraging ERC-4337 account abstraction, enabling developers to create and manage wallets programmatically at scale.
+
+With **Smart Wallets**, developers can:
+
+* Generate ERC-4337 smart wallets on demand, without deploying custom contracts.
+* Retrieve full transaction history through a unified and structured API.
+* Access the user’s onchain portfolio instantly, without multiple queries or external indexers.
+* Scale wallet infrastructure seamlessly to support thousands or millions of users.
+
+By abstracting wallet creation and management, the Notus API lets your team focus on product innovation — while maintaining full onchain transparency and control.
+
+
+# What is a Smart Wallet?
+URL: /docs/guides/smart-wallets/what-is-smart-wallet
+Source: /app/apps/docs/content/docs/guides/smart-wallets/what-is-smart-wallet.mdx
+
+
+
+***
+
+## title: What is a Smart Wallet?
+
+A **smart wallet** is a blockchain wallet implemented as a **smart contract**, rather than relying on a traditional private key and externally owned account (EOA).
+
+Unlike EOAs, smart wallets are programmable, meaning they can:
+
+* Support **social login and recovery** (instead of seed phrases)
+* Automate logic such as **batch transactions** or **daily spending limits**
+* Interact with DeFi protocols or apps with **predefined rules**
+* Delegate permissions to **other signers or session keys**
+
+Smart wallets are the foundation of **Account Abstraction (ERC-4337)**, and enable better user experience without compromising self-custody or security.
+
+***
+
+## How Smart Wallets Work
+
+Smart Wallets are deployed as smart contracts directly onchain. <br />
+Instead of manually deploying a new contract for each user, most systems use a **Factory contract** to automate and optimize wallet creation.
+
+***
+
+## What is a Factory?
+
+A **Factory** is a smart contract used to create and deploy Smart Wallets at scale.
+
+Factories allow:
+
+* **Standardized creation** — All wallets follow a consistent contract structure.
+* **Deterministic addresses** — Wallets can be predicted before deployment using CREATE2.
+* **On-demand deployment** — Wallets are only deployed when needed, saving gas costs.
+
+Using a Factory improves performance, reduces gas expenses, and simplifies managing thousands or millions of Smart Wallets.
+
+***
+
+## Supported Factories
+
+The Notus API currently supports two Smart Wallet factories, optimized for different use cases:
+
+* **Light Account Factory** <br />
+  A lightweight, cost-efficient factory ideal for simple and large-scale deployments.
+
+* **Kernel Account Factory** <br />
+  A modular, extensible factory designed for advanced features and custom logic.
+
+<Cards>
+  <Card title="Learn more about Kernel Account Factory" href="/docs/guides/smart-wallets/kernel" />
+
+  <Card title="Learn more about Light Account Factory" href="/docs/guides/smart-wallets/light-account" />
+</Cards>
+
+Choosing the right factory depends on your product’s requirements for scalability, modularity, and user experience.
+
+***
+
+## Why Use the Same Factory Across All Chains?
+
+To ensure smart wallets maintain the same address across multiple chains, the same Factory contract and initialization code must be used.
+
+This guarantees:
+
+* **Deterministic Address Generation** — Wallet addresses are calculated using the CREATE2 opcode, based on the Factory address, salt, and initialization code. Consistency across chains ensures predictable address generation.
+* **Cross-Chain Compatibility** — A unified wallet address allows users to interact with the same wallet across different blockchains without additional configurations.
+* **Seamless User Experience** — Users can manage assets across multiple chains with a single wallet, simplifying interoperability and asset management.
+
+***
+
+## Why It Matters
+
+Traditionally, onboarding users into crypto involved:
+
+* Creating EOAs manually
+* Backing up seed phrases
+* Funding wallets with ETH
+* Deploying contracts individually
+
+Smart Wallets and Factories change this by allowing:
+
+* Seamless Web2-style login experiences
+* Gasless and programmatic wallet deployment
+* Scalable and user-friendly Web3 onboarding
+
+With Notus Smart Wallets, you can build modern crypto experiences without compromising security, usability, or scalability.
+
+***
+
+For more information, see our [Account Abstraction overview](/docs/guides/account-abstraction/overview) and related documentation.
