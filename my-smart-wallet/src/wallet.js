@@ -1,4 +1,4 @@
-import { NOTUS_CONFIG, NETWORK_CONFIG } from './config.js';
+import { NOTUS_CONFIG, NETWORK_CONFIG, WALLET_SEARCH_CONFIG } from './config.js';
 
 /**
  * Classe para gerenciar Smart Wallets via API Notus
@@ -72,24 +72,59 @@ export class SmartWalletManager {
   }
 
   /**
-   * Processa o status de uma Smart Wallet (verificar + registrar se necessário)
+   * Busca todas as Smart Wallets de um EOA (diferentes salts)
    */
-  async processWallet(eoaAddress, salt = '0', checkOnly = false, verbose = false) {
-    if (verbose) {
-      console.log(`Verificando Smart Wallet para EOA: ${eoaAddress}`);
-      console.log(`Factory: ${this.factoryAddress}`);
-      console.log(`Salt: ${salt}`);
-      console.log(`Rede: ${NETWORK_CONFIG.NETWORK_NAME} (${NETWORK_CONFIG.CHAIN_ID})`);
-      console.log('');
+  async findAllWallets(eoaAddress, maxSalt = WALLET_SEARCH_CONFIG.MAX_SALT_SEARCH) {
+    const wallets = [];
+    const errors = [];
+
+    console.log(`Buscando Smart Wallets para EOA: ${eoaAddress}`);
+    console.log(`Factory: ${this.factoryAddress}`);
+    console.log(`Rede: ${NETWORK_CONFIG.NETWORK_NAME} (${NETWORK_CONFIG.CHAIN_ID})`);
+    console.log(`Verificando salts de 0 até ${maxSalt - 1}...`);
+    console.log('');
+
+    for (let salt = 0; salt < maxSalt; salt++) {
+      try {
+        const result = await this.checkWalletExists(eoaAddress, salt.toString());
+        
+        if (result.ok) {
+          const wallet = result.data.wallet;
+          wallets.push({
+            eoa: eoaAddress,
+            smartWallet: wallet.accountAbstraction,
+            registeredAt: wallet.registeredAt,
+            salt: salt.toString(),
+            factory: 'LightAccount',
+            network: NETWORK_CONFIG.NETWORK_NAME,
+            chainId: NETWORK_CONFIG.CHAIN_ID,
+            exists: true
+          });
+        }
+      } catch (error) {
+        errors.push({ salt: salt.toString(), error: error.message });
+      }
     }
+
+    return { wallets, errors };
+  }
+
+  /**
+   * Processa uma Smart Wallet específica (verificar + registrar se necessário)
+   */
+  async processSingleWallet(eoaAddress, salt = '0', checkOnly = false) {
+    console.log(`Processando Smart Wallet para EOA: ${eoaAddress}`);
+    console.log(`Factory: ${this.factoryAddress}`);
+    console.log(`Salt: ${salt}`);
+    console.log(`Rede: ${NETWORK_CONFIG.NETWORK_NAME} (${NETWORK_CONFIG.CHAIN_ID})`);
+    console.log(`Modo: ${checkOnly ? 'Verificação apenas' : 'Verificar + Registrar'}`);
+    console.log('');
 
     try {
       // Primeiro, verifica se já existe
       const checkResult = await this.checkWalletExists(eoaAddress, salt);
       
-      if (verbose) {
-        console.log(`Status da verificação: ${checkResult.status}`);
-      }
+      console.log(`Status da verificação para salt ${salt}: ${checkResult.status}`);
 
       // Se a verificação foi bem-sucedida, a wallet já existe
       if (checkResult.ok) {
@@ -120,9 +155,7 @@ export class SmartWalletManager {
       }
 
       // Tentar registrar a wallet
-      if (verbose) {
-        console.log('Smart Wallet não encontrada. Tentando registrar...');
-      }
+      console.log(`Smart Wallet com salt ${salt} não encontrada. Tentando registrar...`);
 
       const registerResult = await this.registerWallet(eoaAddress, salt);
 

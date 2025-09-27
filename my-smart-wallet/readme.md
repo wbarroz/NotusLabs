@@ -2,6 +2,16 @@
 
 CLI para criar e gerenciar Smart Wallets usando a API da Notus Labs na rede Polygon.
 
+## Funcionalidades
+
+- ✅ Lista **TODAS** as Smart Wallets associadas ao mesmo EOA (salts 0-9)
+- ✅ Registra Smart Wallets usando LightAccount Factory  
+- ✅ Saída detalhada (verbose) como padrão
+- ✅ Rede Polygon hard-coded (ID: 137)
+- ✅# Smart Wallet CLI - Notus API
+
+CLI para criar e gerenciar Smart Wallets usando a API da Notus Labs na rede Polygon.
+
 ## Instalação
 
 1. Clone ou baixe os arquivos do projeto

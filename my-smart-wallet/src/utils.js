@@ -50,8 +50,7 @@ export function parseArguments(args) {
   const options = {
     address: null,
     check: false,
-    salt: '0',
-    verbose: false,
+    salt: null,
     help: false
   };
   
@@ -78,11 +77,6 @@ export function parseArguments(args) {
         }
         break;
         
-      case '--verbose':
-      case '-v':
-        options.verbose = true;
-        break;
-        
       case '--help':
       case '-h':
         options.help = true;
@@ -98,7 +92,7 @@ export function parseArguments(args) {
  */
 export function showHelp() {
   console.log(`
-Smart Wallet CLI - Notus API
+Smart Wallet CLI - Notus API (Polygon Network)
 
 Uso:
   node src/index.js <endereço-eoa> [opções]
@@ -108,14 +102,19 @@ Argumentos:
 
 Opções:
   -c, --check       Apenas verificar status, não registrar
-  -s, --salt VALUE  Salt customizado (padrão: "0")
-  -v, --verbose     Saída detalhada
+  -s, --salt VALUE  Registrar/verificar salt específico (padrão: busca todos)
   -h, --help        Mostrar esta ajuda
 
 Exemplos:
   node src/index.js 0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6
   node src/index.js 0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6 --check
-  node src/index.js 0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6 --salt 1 --verbose
+  node src/index.js 0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6 --salt 1
+
+Comportamento:
+  - Por padrão, lista TODAS as Smart Wallets do EOA (salts 0-9)
+  - Com --salt, opera apenas no salt especificado
+  - Com --check, não registra novas carteiras
+  - Rede: Polygon (hard-coded)
 
 Configuração:
   Crie um arquivo .env baseado no .env.example com sua NOTUS_API_KEY
