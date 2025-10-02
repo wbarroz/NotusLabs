@@ -4,15 +4,25 @@
 //   register  --eoa <EOA> --salt <n>
 //   list
 //   portfolio --wallet <SMART_WALLET_ADDR>
+//   transfer  --eoa <EOA> --salt <n> --to <dest> --value <quant> --pk <privateKey>
 
 import fetch from "node-fetch";
 import { argv, exit } from "process";
+import { parseEther } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 
 const BASE_URL = process.env.NOTUS_BASE_URL ?? "https://api.notus.team/api/v1";
 const API_KEY = process.env.NOTUS_API_KEY;
 
 // factory do tipo "Light Account" (default da Notus)
 const FACTORY_LIGHT_ACCOUNT = "0x0000000000400CdFef5E2714E63d8040b700BC24";
+
+// constantes fixas para Polygon + POL
+// const CHAIN_ID = 137;
+//
+// constantes fixas para Ethereum + POL
+const CHAIN_ID = 1;
+const TOKEN_POL = "0x455e53cbb86018ac2b8092fdcd39d8444affc3f6";
 
 if (!API_KEY) {
 	console.error("Erro: defina NOTUS_API_KEY com sua API key.");
@@ -25,6 +35,7 @@ Uso:
   register  --eoa <EOA> --salt <n>
   list
   portfolio --wallet <SMART_WALLET_ADDR>
+  transfer  --eoa <EOA> --salt <n> --to <dest> --value <quant> --pk <privateKey>
 `);
 }
 
@@ -41,6 +52,9 @@ function parseArgs() {
 		if (a === "--eoa") { out.opts.eoa = args[++i]; continue; }
 		if (a === "--salt") { out.opts.salt = args[++i]; continue; }
 		if (a === "--wallet") { out.opts.wallet = args[++i]; continue; }
+		if (a === "--to") { out.opts.to = args[++i]; continue; }
+		if (a === "--value") { out.opts.value = args[++i]; continue; }
+		if (a === "--pk") { out.opts.pk = args[++i]; continue; }
 		if (a === "--help" || a === "-h") { usage(); exit(0); }
 		console.warn("Argumento desconhecido:", a);
 	}
@@ -93,6 +107,74 @@ async function getWalletPortfolio(wallet) {
 	console.log(txt);
 }
 
+// 4) Transferir POL entre smart wallets
+async function createTransfer({ fromEoa, salt, to, value }) {
+	// resolve smart wallet origem
+	const url = new URL(`${BASE_URL}/wallets/address`);
+	url.searchParams.set("externallyOwnedAccount", fromEoa);
+	url.searchParams.set("factory", FACTORY_LIGHT_ACCOUNT);
+	url.searchParams.set("salt", String(salt));
+
+	const res = await fetch(url.toString(), {
+		headers: { "x-api-key": API_KEY },
+	});
+	const txt = await res.text();
+	if (!res.ok) throw new Error(`Erro ao resolver smart wallet: ${txt}`);
+	const data = JSON.parse(txt);
+	const fromSmartWallet = data?.wallet?.accountAbstraction;
+	if (!fromSmartWallet) throw new Error("Smart wallet origem não encontrada.");
+
+	// corpo da requisição conforme Notus
+	const body = {
+		chainId: CHAIN_ID,
+		walletAddress: fromSmartWallet,
+		toAddress: to,
+		token: TOKEN_POL,
+		// amount: parseEther(String(value)).toString(),
+		amount: String(value),
+		gasFeePaymentMethod: "DEDUCT_FROM_AMOUNT",
+		payGasFeeToken: TOKEN_POL
+	};
+
+	const res2 = await fetch(`${BASE_URL}/crypto/transfer`, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			"x-api-key": API_KEY,
+		},
+		body: JSON.stringify(body),
+	});
+
+	console.log(JSON.stringify(body))
+
+	const txt2 = await res2.text();
+	if (!res2.ok) throw new Error(`Erro transfer: ${txt2}`);
+	return JSON.parse(txt2);
+}
+
+async function executeUserOp(userOpHash, pk) {
+	const account = privateKeyToAccount(pk);
+	const signature = await account.signMessage({
+		message: { raw: userOpHash },
+	});
+
+	const res = await fetch(`${BASE_URL}/crypto/execute-user-op`, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			"x-api-key": API_KEY,
+		},
+		body: JSON.stringify({
+			userOperationHash: userOpHash,
+			signature,
+		}),
+	});
+
+	const txt = await res.text();
+	if (!res.ok) throw new Error(`Erro execute-user-op: ${txt}`);
+	console.log(txt);
+}
+
 (async () => {
 	try {
 		const parsed = parseArgs();
@@ -102,6 +184,14 @@ async function getWalletPortfolio(wallet) {
 			await listWallets();
 		} else if (parsed.cmd === "portfolio") {
 			await getWalletPortfolio(parsed.opts.wallet);
+		} else if (parsed.cmd === "transfer") {
+			const { eoa, salt = "0", to, value, pk } = parsed.opts;
+			if (!eoa || !to || !value || !pk) {
+				throw new Error("Uso: transfer --eoa <EOA> --salt <n> --to <dest> --value <quant> --pk <privateKey>");
+			}
+			const result = await createTransfer({ fromEoa: eoa, salt, to, value });
+			console.log("UserOperation hash:", result.userOperationHash);
+			await executeUserOp(result.userOperationHash, pk);
 		} else {
 			usage();
 			exit(2);
