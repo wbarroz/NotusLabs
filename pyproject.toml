@@ -1,0 +1,12 @@
+[project]
+name = "notuslabs"
+version = "0.1.0"
+description = ""
+readme = "README.md"
+requires-python = ">=3.13,<4"
+authors = [{ name = "Wilson Barros", email = "wbarroz@gmail.com" }]
+dependencies = ["web3 (>=7.13.0,<8.0.0)", "boto3 (>=1.40.45,<2.0.0)", "botocore (>=1.40.45,<2.0.0)"]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

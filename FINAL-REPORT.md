@@ -6,19 +6,24 @@
 
 ## Dados do Participante
 
-**Nome:**
+**Nome:** Wilson Pereira Barros Junior
 
-**Email:**
+**Email:** wbarroz@gmail.com
 
-**Ferramentas utilizada:**
+**Ferramentas utilizadas:**
+- Editor NeoVim
+- Execução em Node, Python, cURL e a ferramenta da referência para execução de chamadas de API e code snippets
+- IA ChatGPT e Gemini como auxílio em código e testes 
 
 **Link do repositório:**
+`https://github.com/wbarroz/NotusLabs`
 
 **Link do post público:**
 
-**Data de iní­cio:** ___/___/2024
 
-**Data de conclusão:** ___/___/2024
+**Data de iní­cio:** 26/09/2025
+
+**Data de conclusão:** 04/10/2025
 
 ---
 
@@ -26,13 +31,46 @@
 
 ### **1. Qual trilha você testou?**
 
-( ) Trilha A -- Smart Wallet, KYC, Fiat, Portfolio, History
+(*) Trilha A -- Smart Wallet, KYC, Fiat, Portfolio, History
+
 ( ) Trilha B -- Smart Wallet, Swaps, Transfer, Portfolio, History
+
 ( ) Trilha C -- Smart Wallet, Liquidity Pools, Portfolio, History
 
 ---
 
 ### **2. Quais endpoints você testou com mais profundidade?**
+
+a. Registro de carteiras
+`/api/v1/wallets/register`  
+A execução deste endpoint resulta na criação de uma smart wallet, a partir da EOA(chave pública previamente criada), um valor inteiro de salt(default 0) e uma das opções de contratos p/ funcionalidade da smart wallet(no caso, foi usado o modelo "Light Account Factory", mais simples e adequado à experimentação); porém, para ser transacionada, a carteira necessitará de um depósito prévio, e só será "trazida" à vida no momento em que receber uma solicitação de transação(na prática uma cotação é o suficiente)
+
+b. Lista das carteiras criadas
+`/api/v1/wallets`  
+A execução deste endpoint traz na resposta uma lista com as carteiras criadas
+
+c. Portfolio de uma carteira específica
+`/api/v1/wallets/${wallet}/portfolio`  
+A execução deste endpoint traz na resposta o portfolio da carteira, i.e., um "saldo" das quantidades dos diferentes tokens suportados presentes na carteira
+
+d. Cotação p/ transferência
+`/api/v1/crypto/transfer`  
+A execução deste endpoint executa uma cotação para uma transferência a partir da carteira, indicando no retorno da chamada o id da cotação e sua efetividade (efetuável/não efetuável, baseado no saldo e no gas necessário para a realização); a efetivação deve ser feita com o uso do endpoint "Execução de operação do usuário"
+
+e. Execução de operação do usuário
+`/api/v1/crypto/execute-user-op`  
+Este endpoint necessita do id de uma cotação e da sua assinatura feita com a chave privada da EOA, para execução efetiva da cotação
+
+f. Criação de sessão de verificação de identidade de cliente
+`/api/v1/kyc/individual-verification-sessions/standard`  
+A execução deste endpoint dispara o processo de verificação de identidade do cliente, com a inclusão no corpo de envio dos dados do cliente, e a indicação no corpo do retorno os locais de "upload" das fotos da documentação a fornecer, após o que deve ser invocado o "Processamento da verificação de identidade de cliente", descrito a seguir.
+
+g. Processamento da verificação de identidade de cliente
+`/api/v1/kyc/individual-verification-sessions/standard/{session_id}/process`  
+Este endpoint permite que se dispare o processamento dos dados do cliente para a verificação de identidade, cujo status se obtém pelo endpoint "Checagem do status de verificação de identidade do cliente"
+
+h. Checagem do status de verificação de identidade do cliente
+`/api/v1/kyc/individual-verification-sessions/standard/{session_id}`  
 
 Liste os endpoints e o que foi validado neles (ex: `/wallet/create`, `/swap/quote`, etc.)
 

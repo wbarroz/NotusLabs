@@ -1,0 +1,15 @@
+{
+	"firstName": "Wilson",
+	"lastName": "Pereira Barros Junior",
+	"birthDate": "20-04-1973",
+	"documentCategory": "IDENTITY_CARD",
+	"documentCountry": "BRAZIL",
+	"documentId": "16647900802",
+	"livenessRequired": false,
+	"email": "wbarroz@gmail.com",
+	"address": "Av Curio, 319 casa 2",
+	"city": "Diadema",
+	"state": "SP",
+	"postalCode": "09931620",
+	"nationality": "BRAZILIAN"
+}

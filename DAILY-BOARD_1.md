@@ -17,12 +17,11 @@
 
 **1. Qual é o objetivo desta sessão?**
 
-Fazer as operações básicas com carteiras:
-- Criação
-- Transferências: do "exterior" para carteira, e entre carteiras
+Neste momento, o objetivo é fazer o processo de KYC("Know Your Client") na plataforma, para tornar o cliente elegível a utilizar as "rampas"(fazer o "on-ramping" -- troca de moeda fiduciária por criptoativo -- e "off-ramping" -- troca de criptoativo por moeda fiduciária)
+Embora o processo técnico fosse muito facilitado pela experiência já obtida na criação e manuseio das smart-wallets, empecilhos foram encontrados para obter a validação propriamente dita da identidade.
 
-Na prática, devido ao tempo esparso e alguns problemas encontrados, foram necessárias MUITAS sessões para atingir os objetivos.
-Estratégias empregadas:
+O processo de KYC da plataforma resume-se a:
+-  
 - "Full vibe code", fazendo uso do "llms-full.txt" disponibilizado; não funcionou 🙁
 - Seguir os exemplos "as-is" na documentação: envolveu alguma ajuda de IA, mas o entendimento limitado inicial dos processos e reduzida expertise em JavaScript limitou o progresso 😐
 - Usar ao máximo o recurso de execução on-line da referência: Foi o que proporcional o melhor ganho de entendimento da API, e a execução de quase todas as funcionalidades(foram criadas duas carteiras e exercitada a cotação de transferência dessa forma) 🙂
