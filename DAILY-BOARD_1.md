@@ -21,49 +21,68 @@ Neste momento, o objetivo é fazer o processo de KYC("Know Your Client") na plat
 Embora o processo técnico fosse muito facilitado pela experiência já obtida na criação e manuseio das smart-wallets, empecilhos foram encontrados para obter a validação propriamente dita da identidade.
 
 O processo de KYC da plataforma resume-se a:
--  
-- "Full vibe code", fazendo uso do "llms-full.txt" disponibilizado; não funcionou 🙁
-- Seguir os exemplos "as-is" na documentação: envolveu alguma ajuda de IA, mas o entendimento limitado inicial dos processos e reduzida expertise em JavaScript limitou o progresso 😐
-- Usar ao máximo o recurso de execução on-line da referência: Foi o que proporcional o melhor ganho de entendimento da API, e a execução de quase todas as funcionalidades(foram criadas duas carteiras e exercitada a cotação de transferência dessa forma) 🙂
-Na última situação, para execução das transferências propriamente ditas, a documentação foi fundamental por conta da necessidade de fazer em código(o processo de obter a assinatura "na mão" tornava inviável executar a transferência no tempo hábil após a cotação), dada a correção do código de exemplo neste caso específico.
-
-
-
-
-Nesta sessão, o objetivo é seguir a documentação para criar smart wallet(s)
+- Utilizar o endpoint "Create a standard individual verification session"(kyc/individual-verification-sessions/standard), com os campos do "formulário"(body) preenchidos("firstName", "lastName", "birthDate", "documentCategory", "documentCountry", "documentId", "livenessRequired", "email", "address", "city", "state", "postalCode", "nationality");
+- Utilizar a resposta para fazer o upload da(s) foto(s) do documento no AWS S3 via URL pré-assinada(presigned)
+- Através do endpoint "Process a standard individual verification session"(/kyc/individual-verification-sessions/standard/:sessionId/process) iniciar o processamento da verificação;
+- E por último, monitorar o andamento da verificação via endpoint "Get a standard individual verification session result"(/kyc/individual-verification-sessions/standard/:sessionId/process) -- até que o status seja "COMPLETED" ou "FAILED"
 
 ---
 
 **2. Qual abordagem você vai usar?**
 
-Seguir rigorosamente a documentação, a partir da seção "Getting Started"
+Seguindo rigorosamente a documentação, a partir da seção "KYC Quickstart":
+a. Criar sessão de verificação, com o endpoint:  
+`POST kyc/individual-verification-sessions/standard`
+
+b. Envio de Documento(s):
+A resposta ao endpoint anterior contém informação para o upload do(s) arquivo(s) em um S3 da AWS:
+- Foto da frente("Front Document"): para toda opção de documento("PASSPORT","DRIVERS_LICENSE" ou "IDENTITY_CARD")
+- Foto do verso(Back Document): documentos com verso("DRIVERS_LICENSE" ou "IDENTITY_CARD")
+Um cuidado extra é o de que sejam obtidas fotos de boa qualidade, não imagens escaneadas ou digitalizações; outro detalhe é que o link "dura" só 15 minutos
+
+c. Finalização
+Após o upload da(s) foto(s) do documento, o processo de verificação propriamente dito é disparado pelo endpoint:
+`POST /kyc/individual-verification-sessions/standard/:sessionId/process`
+
+d. Check Status
+...e o status da verificação pode ser consultado em:  
+`GET /kyc/individual-verification-sessions/standard/:sessionId`
+
+O status da verificação poderá ser:
+- "PENDING": Sessão criada, falta realizar upload
+- "VERIFYING": Documentos em análise pelo sistema
+- "COMPLETED": Verificação approvada, sucesso
+- "FAILED":	Verificação rejeitada, ou erro durante processamento
+- "EXPIRED": Sessão expirada
 
 ---
 
-**3. Há algo que precisa ser configurado antes de começar?**
-Definido o ponto de partida, são explícitos os seguintes requisitos p/ operação:
-    * Acesso ao Dashboard -- Gentilmente cedido pela NotusLabs ✅;
-    * Organização criada -- Conforme documentação ✅;
-    * Criação de Projeto -- Conforme documentação ✅;
-    * Uso(criação?) da chave da API(criada automaticamente com o Projeto) ✅;
-    * Configuração de taxas e endereço -- a ser definido na criação da carteira;
+**3. Há algo que precisa ser configurado antes de começar?**  
+Definido o ponto de partida, são explícitos os seguintes requisitos p/ operação:  
+* Acesso ao Dashboard -- Gentilmente cedido pela NotusLabs ✅;  
+* Organização criada -- Conforme documentação ✅;  
+* Criação de Projeto -- Conforme documentação ✅;  
+* Uso(criação?) da chave da API(criada automaticamente com o Projeto) ✅;  
     
 
 ---
 
 **4. Você conseguiu atingir o objetivo da sessão?**
 
-* [X] Sim
-* [ ] Não. Se **não**, explique o que impediu.
+* [ ] Sim
+* [X] Não. Se **não**, explique o que impediu.
+
+Não foi possível a finalização do processo, uma vez que para as execuções de on/off ramping dependem do "individualId", obtido via KYC
 
 ---
 
-**5. Problemas encontrados**
-* Ao se seguir o link indicado para criação de carteiras(smart wallet) na seção "Getting Started", é aberto o ítem "Web3Auth" da seção "Authentication", que pode ser lógico mas é confuso; seguida pois a ordem posicional(apenas) de começar por criar a conta("Create an account");
-* O link para criação da conta("Create an account") leva à seção "Getting started", que é lógico também mas poderia ser mais claro(a documentação deveria trazer um fluxo padrão, conveniente para iniciantes(ainda que não ótimo p/ avançados)
-* Do ponto de vista do iniciante, ainda, iniciar passando pelo "Light Account"(o que só é evidente após tentativa e erro) faz muito mais sentido, uma vez que várias características e vantagens da abordagem NotusLabs ficam mais claras
-* Para criação "pura" da carteira(sem login social) foi necessária a criação de um par chave pública/privada na "mão", tendo sido adotada Foundry(cast wallet new); também necessária transferência via aplicativo "Chainless"(fundos gentilmente concedidos pela NotusLabs) para "preparar" a smart wallet
-* Durante atualizações do repositório, um arquivo contendo a chave primária for "upado", comprometendo as primeiras carteiras criadas por vibe coding
+**5. Problemas encontrados**  
+O processo de verificação é relativamente simples, porém:  
+- A resposta obtida quando da primeira chamada de API("Criação de sessão"), a ser usado no passo seguinte("Envio de Documentos") difere da documentação;
+- No caso de se usar "PASSPORT" na sessão de verificação, o sistema rejeita os caracteres alfabéticos presentes no número de passaporte, impedindo portanto seu uso;
+- De acordo com orientação fornecida pelo suporte, o número de documento efetivamente aceito é o de CPF, porém há dúvidas se mesmo os documentos de identificação recentes possuem o CPF 
+- A resposta de falha não inclue o motivo da rejeição do envio, tornando obrigatória a consulta ao suporte
+- Embora todas as condições fossem satisfeitas, não houve sucesso nas tentativas de se fazer a verificação de identidade, tendo o sistema rejeitado a documentação imediatamente após a solicitação
 
 ---
 

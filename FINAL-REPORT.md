@@ -12,7 +12,7 @@
 
 **Ferramentas utilizadas:**
 - Editor NeoVim
-- Execução em Node, Python, cURL e a ferramenta da referência para execução de chamadas de API e code snippets
+- Execução em Node, Python, cURL e a ferramenta da referência para execução de chamadas de API e obtenção de "code snippets"
 - IA ChatGPT e Gemini como auxílio em código e testes 
 
 **Link do repositório:**
