@@ -1,0 +1,30 @@
+{
+	"name": "notus-cli",
+	"version": "1.0.0",
+	"description": "CLI para integração com Notus API (FIAT e Crypto)",
+	"main": "notus-cli.js",
+	"type": "module",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"deposit": "node notus-cli.js deposit",
+		"withdraw": "node notus-cli.js withdraw",
+		"transfer": "node notus-cli.js transfer",
+		"swap": "node notus-cli.js swap"
+	},
+	"keywords": [
+		"notus",
+		"blockchain",
+		"fiat",
+		"swap",
+		"transfer",
+		"deposit",
+		"withdraw"
+	],
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"dotenv": "^17.2.3",
+		"qrcode": "^1.5.4",
+		"viem": "^2.37.11"
+	}
+}
