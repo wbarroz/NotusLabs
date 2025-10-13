@@ -67,10 +67,28 @@ A execução deste endpoint dispara o processo de verificação de identidade do
 
 g. *Processamento da verificação de identidade de cliente*  
 `/api/v1/kyc/individual-verification-sessions/standard/{session_id}/process`  
-Este endpoint permite que se dispare o processamento dos dados do cliente para a verificação de identidade, cujo status se obtém pelo endpoint "Checagem do status de verificação de identidade do cliente"
+Este endpoint permite que se dispare o processamento dos dados do cliente para a verificação de identidade
 
 h. *Checagem do status de verificação de identidade do cliente*  
 `/api/v1/kyc/individual-verification-sessions/standard/{session_id}`  
+Este endpoint permite que se verifique o status da verificação de identidade
+
+i. *Cotação de depósito fiduciário*  
+`/api/v1/fiat/deposit/quote`
+Este endpoint faz a cotação para um depósito fiduciário numa smart wallet
+
+j. *Ordem de depósito fiduciário*  
+`/api/v1/fiat/deposit`
+Este endpoint efetua o depósito fiduciário numa smart wallet, baseado em cotação prévia
+
+k. *Cotação de saque fiduciário*  
+`/api/v1/fiat/withdraw/quote`
+Este endpoint faz a cotação para um resgate fiduciário a partir de uma smart wallet
+
+l. *Ordem de saque fiduciário*  
+`/api/v1/fiat/withdraw`
+Este endpoint executa um resgate fiduciário a partir de uma smart wallet, baseado em cotação prévia
+
 
 Liste os endpoints e o que foi validado neles (ex: `/wallet/create`, `/swap/quote`, etc.)
 
@@ -169,43 +187,103 @@ Para finalizar, uma seqüência com os casos de uso das trilhas 1 & 2:
 1. No dashboard, um projeto é criado:
 
 1. Para os testes, serão criadas duas carteiras("smart wallets"), a partir de um par de chaves(pública & privada, que constituem uma EOA) que pode ser obtido pelo seguinte comando do Foundry SDK:  
-`$ cast wallet new`
+    ```console
+    cast wallet new
+    ```
 
 1. Com as chaves acima obtidas, já se torna possível criar as carteiras, através do código `https://github.com/wbarroz/NotusLabs/tree/main/notus-cli`, registrando-as com o seguinte corpo de mensagem:
-```
-{
-	"factory": "0x0000000000400CdFef5E2714E63d8040b700BC24",
-	"externallyOwnedAccount": "0xfa..9c",
-	"salt": "0"
-}
-```
-com a chamada:  
-`$ npm run register -- reg_wallet.json`  
-sendo que para a primeira carteira o campo "salt" fica a "0" como mostrado acima e para a segunda o valor é "1", e "factory" traz o tipo de smart contract atrelado às accounts(o que caracteriza a "smart wallet") usado, que no nosso caso é o mais simples &mdash; "Light Account Factory"; as carteiras ficam como a seguir:  
+    ```
+    {
+        "factory": "0x0000000000400CdFef5E2714E63d8040b700BC24",
+        "externallyOwnedAccount": "0xfa..9c",
+        "salt": "0"
+    }
+    ```
+    com a chamada:  
+    ```console
+    npm run register -- reg_wallet.json # usada a função "Register Smart Wallet"(/api/v1/wallets/register)
+    ```
+    sendo que para a primeira carteira o campo "salt" fica a "0" como mostrado acima e para a segunda o valor é "1", e "factory" traz o tipo de smart contract atrelado às accounts(o que caracteriza a "smart wallet") usado, que no nosso caso é o mais simples &mdash; "Light Account Factory"; as carteiras ficam como a seguir:  
 ![carteiras criadas](https://github.com/wbarroz/NotusLabs/blob/main/Lista_carteiras.png)
 
-1. Para exercitar as operações de transferência, é necessário a transferência de valores para as carteiras, o que vai ser feito através da rampa de entrada(on-ramp); para tanto, é necessária a habilitação da rampa para o projeto criado(procedimento interno), e a criação de uma identificação, através do processo de KYC para o usuário, que consiste na verificação de documentação e prova de vida(aqui não usado para efeito de simplicidade, mas que pode ser feito): o KYC é iniciado através da chamada da função "Create a standard individual verification session", que pode ser executada no código `https://github.com/wbarroz/NotusLabs/tree/main/kyc/kyc_py`, usando o seguinte corpo de mensagem:
-```
-{
-	"firstName": "Joao",
-	"lastName": "da Silva Souza",
-	"birthDate": "20/04/1993",
-	"documentCategory": "IDENTITY_CARD",
-	"documentCountry": "BRAZIL",
-	"documentId": "13333333332",
-	"livenessRequired": false,
-	"email": "exemplo@email.com.br",
-	"address": "Rua Generica, 7",
-	"city": "Campinas",
-	"state": "SP",
-	"postalCode": "09999990",
-	"nationality": "BRAZILIAN"
-}
-```
-...e a seguinte chamada:  
-`$ ./kyc.py --body form.json --front frente.jpg --back verso.jpg`
-
+1. Para exercitar as transferências de valores entre as carteiras, é necessário um depósito inicial, o que vai ser feito através da rampa de entrada(on-ramp); para tanto, é necessária a habilitação da rampa para o projeto criado(procedimento interno), e a criação de uma identificação, através do processo de KYC para o usuário, que consiste na verificação de documentação e prova de vida(aqui não usado para efeito de simplicidade, mas que pode ser feito): o KYC é iniciado através da chamada da função "Create a standard individual verification session", que pode ser executada no código `https://github.com/wbarroz/NotusLabs/tree/main/kyc/kyc_py`, usando o seguinte corpo de mensagem:
+    ```
+    {
+        "firstName": "Joao",
+        "lastName": "da Silva Souza",
+        "birthDate": "20/04/1993",
+        "documentCategory": "IDENTITY_CARD",
+        "documentCountry": "BRAZIL",
+        "documentId": "13333333332",
+        "livenessRequired": false,
+        "email": "exemplo@email.com.br",
+        "address": "Rua Generica, 7",
+        "city": "Campinas",
+        "state": "SP",
+        "postalCode": "09999990",
+        "nationality": "BRAZILIAN"
+    }
+    ```
+    ...e a seguinte chamada:  
+`./kyc.py --body form.json --front frente.jpg --back verso.jpg`  
 O processo de KYC envolve o envio da mensagem acima, seguido pelo envio(em caso de um início de verificação bem-sucedido) da(s) foto(s) de documento, seguido pela consulta do status do processo em que a resposta pode ser "PENDING"(fotos não enviadas), "PROCESSING(fotos enviadas, fazendo processamento)" , "VERIFYING"(fazendo a verificação das informações) , "COMPLETED"(verificação bem-sucedida, inclue o individualId) , "FAILED"(falhou verificação) ou "EXPIRED(não enviadas a(s) foto(s) de documento no tempo hábil". Todo esse processo é realizado pelo código acima mencionado. Convém mencionar que o procedimento de envio das fotos poderia se beneficiar de uma descrição, ainda que sucinta, do processo de upload no AWS S3 usado(no caso o assistente de IA foi capaz de criar a automação necessária, baseado nos campos de retorno da mensagem inicial &mdash; "Create a standard individual verification session").
+
+1. Obtido o "individualId" num projeto habilitado ao uso da rampa, podem ser feitas as transações com vista à conversão de moeda fiduciária em crypto-ativos; para tanto, o primeiro passo é a execução de uma cotação do depósito em dinheiro para uma das carteiras, o que é feito através do endpoint "Create Fiat Deposit Quote", usando-se o seguinte conteúdo(por exemplo)no corpo da mensagem:
+    <a name="fiat_deposit"></a>
+    ```json
+    {
+        "paymentMethodToSend": "PIX",
+        "receiveCryptoCurrency": "BRZ",
+        "amountToSendInFiatCurrency": 27.55,
+        "individualId": "ff..8d",
+        "walletAddress": "0x57..1c",
+        "chainId": 137
+    }
+    ```
+    como pode ser visto, o criptoativo alvo para o depósito é BRZ(para essa operação, podem ser usados BRZ &mdash; "Brazilian Digital" &mdash; e USDC &mdash; "USD Coin");
+    na resposta à esta requisição, se viável(valor mínimo em reais: R$ 0,01, endereço correto de carteira, usuário, etc), são confirmados os valores, incluindo a efetiva conversão(no caso, 1:1) e sua validade:
+    ```json
+    {
+      "depositQuote": {
+        "quoteId": "be885ff6-52e6-467f-b32b-7ac6bcdd5a2f",
+        "amountToSendInFiatCurrency": "27.55",
+        "amountToReceiveInCryptoCurrency": "27.55",
+        "expiresAt": "2025-10-13T20:12:18.382Z"
+      }
+    }
+    ```
+    Tudo o mais correto, a ordem tem sua efetivação iniciada através do endpoint "Create Fiat Deposit Order", usando o seguinte corpo de mensagem:
+    ```json
+    {
+      "quoteId": "be885ff6-52e6-467f-b32b-7ac6bcdd5a2f",
+      "walletAddress": "0x57..1c"
+    }
+    ```
+    Na resposta à esta última requisição, estarão presentes as informações para o depósito via PIX:
+    ```json
+    {
+        "depositOrder": {
+            "orderId": "925c869f-27ca-406b-b872-db6c5930c106",
+            "expiresAt": "2025-10-13T20:12:18.382Z",
+            "paymentMethodToSendDetails": {
+                "type": "PIX",
+                "pixKey": "000...br.gov.bcb.pix...pix.b...com/qrs1/v2/01djWpcPZxXuRjHepRUw1gh352gVkSWgRPuXzFdgxX5MXNNay520400005303986540527.555802BR59213rz .....................Rio de Janeiro6***************D26",
+                "base64QrCode": "iVBORw0KGgoAAAANXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX5CYII="
+            }
+        }
+    }
+    ```
+    Usando-se o código em `https://github.com/wbarroz/NotusLabs/blob/main/notus-cli/notus-cli.js`, com o seguinte comando:  
+    ```console
+    npm run deposit -- deposit_body.json execute
+    ```  
+    e tendo no arquivo `deposit_body.json` o conteúdo do [corpo de mensagem inicial acima mostrado](#fiat_deposit), toda essa sequência de operação é executada automaticamente, com a geração de um arquivo PNG com o QR-Code para a efetuação do depósito via PIX.
+
+    ![preparação do PIX](https://github.com/wbarroz/NotusLabs/blob/main/pix_started.jpg)
+    ![PIX finalizado](https://github.com/wbarroz/NotusLabs/blob/main/pix_finished.jpg)
+
+    1. Através do endpoint "Get Smart Wallet Portfolio", é possível verificar, no corpo da mensagem de retorno, a carteira destino com os recursos recém-depositados:
+
 
 
 
