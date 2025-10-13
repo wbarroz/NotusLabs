@@ -23,7 +23,7 @@
 
 **Data de iní­cio:** 26/09/2025
 
-**Data de conclusão:** 04/10/2025
+**Data de conclusão:** 10/10/2025
 
 ---
 
@@ -33,7 +33,7 @@
 
 (*) Trilha A -- Smart Wallet, KYC, Fiat, Portfolio, History
 
-( ) Trilha B -- Smart Wallet, Swaps, Transfer, Portfolio, History
+(*) Trilha B -- Smart Wallet, Swaps, Transfer, Portfolio, History
 
 ( ) Trilha C -- Smart Wallet, Liquidity Pools, Portfolio, History
 
@@ -41,35 +41,35 @@
 
 ### **2. Quais endpoints você testou com mais profundidade?**
 
-a. Registro de carteiras
+a. *Registro de carteiras*  
 `/api/v1/wallets/register`  
 A execução deste endpoint resulta na criação de uma smart wallet, a partir da EOA(chave pública previamente criada), um valor inteiro de salt(default 0) e uma das opções de contratos p/ funcionalidade da smart wallet(no caso, foi usado o modelo "Light Account Factory", mais simples e adequado à experimentação); porém, para ser transacionada, a carteira necessitará de um depósito prévio, e só será "trazida" à vida no momento em que receber uma solicitação de transação(na prática uma cotação é o suficiente)
 
-b. Lista das carteiras criadas
+b. *Lista das carteiras criadas*  
 `/api/v1/wallets`  
 A execução deste endpoint traz na resposta uma lista com as carteiras criadas
 
-c. Portfolio de uma carteira específica
+c. *Portfolio de uma carteira específica*  
 `/api/v1/wallets/${wallet}/portfolio`  
 A execução deste endpoint traz na resposta o portfolio da carteira, i.e., um "saldo" das quantidades dos diferentes tokens suportados presentes na carteira
 
-d. Cotação p/ transferência
+d. *Cotação p/ transferência*  
 `/api/v1/crypto/transfer`  
 A execução deste endpoint executa uma cotação para uma transferência a partir da carteira, indicando no retorno da chamada o id da cotação e sua efetividade (efetuável/não efetuável, baseado no saldo e no gas necessário para a realização); a efetivação deve ser feita com o uso do endpoint "Execução de operação do usuário"
 
-e. Execução de operação do usuário
+e. *Execução de operação do usuário*  
 `/api/v1/crypto/execute-user-op`  
 Este endpoint necessita do id de uma cotação e da sua assinatura feita com a chave privada da EOA, para execução efetiva da cotação
 
-f. Criação de sessão de verificação de identidade de cliente
+f. *Criação de sessão de verificação de identidade de cliente*  
 `/api/v1/kyc/individual-verification-sessions/standard`  
 A execução deste endpoint dispara o processo de verificação de identidade do cliente, com a inclusão no corpo de envio dos dados do cliente, e a indicação no corpo do retorno os locais de "upload" das fotos da documentação a fornecer, após o que deve ser invocado o "Processamento da verificação de identidade de cliente", descrito a seguir.
 
-g. Processamento da verificação de identidade de cliente
+g. *Processamento da verificação de identidade de cliente*  
 `/api/v1/kyc/individual-verification-sessions/standard/{session_id}/process`  
 Este endpoint permite que se dispare o processamento dos dados do cliente para a verificação de identidade, cujo status se obtém pelo endpoint "Checagem do status de verificação de identidade do cliente"
 
-h. Checagem do status de verificação de identidade do cliente
+h. *Checagem do status de verificação de identidade do cliente*  
 `/api/v1/kyc/individual-verification-sessions/standard/{session_id}`  
 
 Liste os endpoints e o que foi validado neles (ex: `/wallet/create`, `/swap/quote`, etc.)
@@ -78,18 +78,31 @@ Liste os endpoints e o que foi validado neles (ex: `/wallet/create`, `/swap/quot
 
 ### **3. Quais foram os principais bugs encontrados?**
 
-* Descreva cada bug com:
-
-  * Endpoint envolvido
-  * Comportamento esperado vs. real
-  * Reprodutibilidade (acontece sempre? só em certas condições?)
-  * Gravidade (baixa, média, alta)
+* Foi um problema momentâneo("bug resolvido"), a verificação de identidade individual(`/api/v1/kyc/individual-verification-sessions/standard`) esteve inoperante por alguns dias, mas o apoio contínuo do pessoal da `@API` ajudou a depurar alguns erros de uso(*meus*), permitindo o sucesso na primeira tentativa quando da volta do serviço.
 
 ---
 
 ### **4. Quais comportamentos inesperados você identificou?**
 
-Mesmo que não sejam bugs, anote tudo que *pareceu estranho* ou *pouco intuitivo*.
+* Longe de ser um bug, mas aconteceu com alguma frequência e, especialmente no começo, atrapalhou um bocado(a *minha* falta de experiência também ajudou), foi a "generalidade" de algumas mensagens; por exemplo, ao usar o endpoint "Create Transfer"(`/api/v1/crypto/transfer`), com valor insuficiente para concluir a operação:
+```
+{
+  "message": "An unexpected error occurred. Our team has been notified.",
+  "id": "INTERNAL_SERVER_ERROR",
+  "traceId": "28e7931e191c466bbf77718a923baf60"
+}
+```
+
+* Entre 12 e 13h no dia 10 de outubro houve uma certa indisponibilidade, onde por exemplo as chamadas à função "Get Smart Wallet Portfolio"(`/api/v1/wallets/{walletAddress}/portfolio`) retornavam sempre:
+```
+{
+  "message": "Failed to get balances. Please try again later.",
+  "id": "FAILED_TO_GET_BALANCES",
+  "traceId": "06ce5127231142edae48dfda1e78c7fc"
+}
+```
+
+* Ainda nessa tarde(10/10), uma das moedas estavam incorretamente identificadas("Staked BRZ" &mdash; STBRZ &mdash; estava como "Brazilian Digital" &mdash; BRZ), o que foi prontamente corrigido &mdash; mas pode estar presente em outras moedas
 
 ---
 
@@ -97,52 +110,103 @@ Mesmo que não sejam bugs, anote tudo que *pareceu estranho* ou *pouco intuitivo
 
 - **De uma nota de 1 a 5 para cada item, com comentários opcionais.**
 
-* A documentação foi suficiente? 1-5
-* As mensagens de erro ajudaram? 1-5
-* O fluxo fez sentido? 1-5
-* O tempo de resposta era razoável? 1-5
+* A documentação foi suficiente? _4.5_  
+A documentação está ótima, e o recurso de poder executar chamadas na referência, com os exemplos em diversos formatos(cURL, python, javascript, etc) é extremamente valioso, mas às vezes há detalhes nas chamadas efetivamente usados que não estão presentes no formulário de body, apenas no editor de JSON
+* As mensagens de erro ajudaram? _2_  
+Sinceramente, às vezes as mensagens são um bocado genéricas, e não ajudam na depuração dos problemas como deveriam
+* O fluxo fez sentido? _3_
+As definições são claras, mas faz falta um *FLUXOGRAMA* com casos de uso que ilustrassem quais as sequencias típicas das chamadas, incluindo possíveis variações e enganos comuns
+* O tempo de resposta era razoável? _5_
+Tanto no sucesso(o que felizmente aconteceu na maior parte do tempo 😃) quanto nos eventuais erros, a resposta da API foi rápida e não interferiu nos casos de uso 
+
 
 
 ---
 
 ### **6. Alguma funcionalidade estava ausente ou incompleta?**
 
-Liste endpoints ou comportamentos esperados que simplesmente **não estavam lá** ou pareciam inacabados.
+Os endpoints disponibilizados foram suficientes para o teste das funcionalidades, não foi notada uma ausência importante.
 
 ---
 
 ### **7. Quais melhorias você sugere?**
 
-Inclua sugestões sobre:
+* Descrições mais detalhadas e específicas nas mensagens de erro;
+* Na documentação, particularmente na referência, tornar compatíveis os campos disponíveis no formulário com o conteúdo do corpo da mensagem visível quando se habilita o editor de JSON;
+* Na documentação, os diferentes guias deveriam incluir o contexto de uso, com uma descrição mais detalhada dos passos, e também mais exemplos de código no repositório
 
-* Nomes de campos
-* Design de endpoints
-* Lógica de negócio
-* Fluxo geral de uso
-* Retornos da API
-* Consistência entre rotas
+* Nomes de campos? Melhor manter
+* Design de endpoints? É funcional no estado em que está
+* Lógica de negócio? Seria beneficiado de fluxogramas com as sequências esperadas
+* Fluxo geral de uso? Idem lógica de negócio acima
+* Retornos da API? Mensagens de erro precisam ser mais detalhadas e menos genéricas
+* Consistência entre rotas? Parece bom como está(não atrapalhou, pelo menos)
 
 ---
 
 ### **8. Como você avaliaria a estabilidade geral da API nesta trilha?**
 
 * [ ] Muito estável -- tudo funcionou bem
-* [ ] Estável -- poucos problemas, nada crí­tico
+* [*] Estável -- poucos problemas, nada crí­tico
 * [ ] Instável -- muitos problemas ou travamentos
 * [ ] Quebrada -- mal consegui testar
 
 Explique com base na sua experiência.
+A experiência com o uso da API foi bem satisfatória pois, mesmo com alguns problemas no KYC e mensagens de erro restritas, todas as funcionalidades que se planejava testar foram experimentadas com sucesso.
 
 ---
 
 ### **9. Há testes que você gostaria de ter feito, mas não conseguiu? Por quê?**
 
-Isso ajuda a identificar lacunas no ambiente, documentação ou tempo alocado.
+Foi possível realizar todos os "caminhos felizes" que permitiram verificar as principais funcionalidades da plataforma, o que talvez tenha ficado de fora foi uma teste mais sistemático de todas as funcionalidades, mas isso estava fora do escopo inicial e do tempo disponível.
 
 ---
 
 ### **10. Comentários finais ou insights gerais?**
 
-Espaço livre para observações, sugestões estratégicas, ideias de produto, ou qualquer coisa que não se encaixou nas perguntas anteriores.
+Para finalizar, uma seqüência com os casos de uso das trilhas 1 & 2:
+
+1. No dashboard, um projeto é criado:
+
+1. Para os testes, serão criadas duas carteiras("smart wallets"), a partir de um par de chaves(pública & privada, que constituem uma EOA) que pode ser obtido pelo seguinte comando do Foundry SDK:  
+`$ cast wallet new`
+
+1. Com as chaves acima obtidas, já se torna possível criar as carteiras, através do código `https://github.com/wbarroz/NotusLabs/tree/main/notus-cli`, registrando-as com o seguinte corpo de mensagem:
+```
+{
+	"factory": "0x0000000000400CdFef5E2714E63d8040b700BC24",
+	"externallyOwnedAccount": "0xfa..9c",
+	"salt": "0"
+}
+```
+com a chamada:  
+`$ npm run register -- reg_wallet.json`  
+sendo que para a primeira carteira o campo "salt" fica a "0" como mostrado acima e para a segunda o valor é "1", e "factory" traz o tipo de smart contract atrelado às accounts(o que caracteriza a "smart wallet") usado, que no nosso caso é o mais simples &mdash; "Light Account Factory"; as carteiras ficam como a seguir:  
+![carteiras criadas](https://github.com/wbarroz/NotusLabs/blob/main/Lista_carteiras.png)
+
+1. Para exercitar as operações de transferência, é necessário a transferência de valores para as carteiras, o que vai ser feito através da rampa de entrada(on-ramp); para tanto, é necessária a habilitação da rampa para o projeto criado(procedimento interno), e a criação de uma identificação, através do processo de KYC para o usuário, que consiste na verificação de documentação e prova de vida(aqui não usado para efeito de simplicidade, mas que pode ser feito): o KYC é iniciado através da chamada da função "Create a standard individual verification session", que pode ser executada no código `https://github.com/wbarroz/NotusLabs/tree/main/kyc/kyc_py`, usando o seguinte corpo de mensagem:
+```
+{
+	"firstName": "Joao",
+	"lastName": "da Silva Souza",
+	"birthDate": "20/04/1993",
+	"documentCategory": "IDENTITY_CARD",
+	"documentCountry": "BRAZIL",
+	"documentId": "13333333332",
+	"livenessRequired": false,
+	"email": "exemplo@email.com.br",
+	"address": "Rua Generica, 7",
+	"city": "Campinas",
+	"state": "SP",
+	"postalCode": "09999990",
+	"nationality": "BRAZILIAN"
+}
+```
+...e a seguinte chamada:  
+`$ ./kyc.py --body form.json --front frente.jpg --back verso.jpg`
+
+O processo de KYC envolve o envio da mensagem acima, seguido pelo envio(em caso de um início de verificação bem-sucedido) da(s) foto(s) de documento, seguido pela consulta do status do processo em que a resposta pode ser "PENDING"(fotos não enviadas), "PROCESSING(fotos enviadas, fazendo processamento)" , "VERIFYING"(fazendo a verificação das informações) , "COMPLETED"(verificação bem-sucedida, inclue o individualId) , "FAILED"(falhou verificação) ou "EXPIRED(não enviadas a(s) foto(s) de documento no tempo hábil". Todo esse processo é realizado pelo código acima mencionado. Convém mencionar que o procedimento de envio das fotos poderia se beneficiar de uma descrição, ainda que sucinta, do processo de upload no AWS S3 usado(no caso o assistente de IA foi capaz de criar a automação necessária, baseado nos campos de retorno da mensagem inicial &mdash; "Create a standard individual verification session").
+
+
 
 ---
