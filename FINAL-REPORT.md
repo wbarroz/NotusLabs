@@ -278,9 +278,8 @@ O processo de KYC envolve o envio da mensagem acima, seguido pelo envio(em caso 
     npm run deposit -- deposit_body.json execute
     ```  
     e tendo no arquivo `deposit_body.json` o conteúdo do [corpo de mensagem inicial acima mostrado](#fiat_deposit), toda essa sequência de operação é executada automaticamente, com a geração de um arquivo PNG com o QR-Code para a efetuação do depósito via PIX.
-
-    ![preparação do PIX](https://github.com/wbarroz/NotusLabs/blob/main/pix_started.jpg)
-    ![PIX finalizado](https://github.com/wbarroz/NotusLabs/blob/main/pix_finished.jpg)
+    <img src="https://github.com/wbarroz/NotusLabs/blob/main/pix_started.jpg" alt="preparação do PIX" width="200"/>
+    <img src="https://github.com/wbarroz/NotusLabs/blob/main/pix_started.jpg" alt="PIX finalizado" width="200"/>
 
     1. Através do endpoint "Get Smart Wallet Portfolio", é possível verificar, no corpo da mensagem de retorno, a carteira destino com os recursos recém-depositados:
 
