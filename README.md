@@ -180,7 +180,7 @@ Foi possível realizar todos os "caminhos felizes" que permitiram verificar as p
 
 ---
 
-### **10. Comentários finais ou insights gerais?**
+### **10. Comentários finais & insights gerais**
 
 Para finalizar, uma seqüência com os casos de uso das trilhas 1 & 2:
 
@@ -204,7 +204,9 @@ Para finalizar, uma seqüência com os casos de uso das trilhas 1 & 2:
     npm run register -- reg_wallet.json # usada a função "Register Smart Wallet"(/api/v1/wallets/register)
     ```
     sendo que para a primeira carteira o campo "salt" fica a "0" como mostrado acima e para a segunda o valor é "1", e "factory" traz o tipo de smart contract atrelado às accounts(o que caracteriza a "smart wallet") usado, que no nosso caso é o mais simples &mdash; "Light Account Factory"; as carteiras ficam como a seguir:  
-![carteiras criadas](https://github.com/wbarroz/NotusLabs/blob/main/Lista_carteiras.png)
+    <p align="center">
+    <img src="https://github.com/wbarroz/NotusLabs/blob/main/Lista_carteiras.png" alt="carteiras criadas" width="200"/>
+    </p>
 
 1. Para exercitar as transferências de valores entre as carteiras, é necessário um depósito inicial, o que vai ser feito através da rampa de entrada(on-ramp); para tanto, é necessária a habilitação da rampa para o projeto criado(procedimento interno), e a criação de uma identificação, através do processo de KYC para o usuário, que consiste na verificação de documentação e prova de vida(aqui não usado para efeito de simplicidade, mas que pode ser feito): o KYC é iniciado através da chamada da função "Create a standard individual verification session", que pode ser executada no código `https://github.com/wbarroz/NotusLabs/tree/main/kyc/kyc_py`, usando o seguinte corpo de mensagem:
     ```
@@ -293,7 +295,7 @@ O processo de KYC envolve o envio da mensagem acima, seguido pelo envio(em caso 
           "priceUsd": "0.1817383484",
           "balanceUsd": "5.00689149842",
           "balanceFormatted": "27.55",
-          "address": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
+          "address": "0x4e..dc",
           "name": "Brazilian Digital",
           "symbol": "brz",
           "logo": "https://coin-images.coingecko.com/coins/images/8472/large/MicrosoftTeams-image_%286%29.png?1696508657",
@@ -314,7 +316,7 @@ O processo de KYC envolve o envio da mensagem acima, seguido pelo envio(em caso 
           "priceUsd": "0.1817383484",
           "balanceUsd": "5.00689149842",
           "balanceFormatted": "27.55",
-          "address": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
+          "address": "0x4e..dc",
           "name": "Brazilian Digital",
           "symbol": "brz",
           "logo": "https://coin-images.coingecko.com/coins/images/8472/large/MicrosoftTeams-image_%286%29.png?1696508657",
@@ -342,11 +344,11 @@ permite que se faça também a transferência na mesma funcionalidade; por exemp
         "chainIdIn": 137,
         "chainIdOut": 1,
         "gasFeePaymentMethod": "DEDUCT_FROM_AMOUNT",
-        "payGasFeeToken": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
-        "tokenIn": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
-        "tokenOut": "0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce",
-        "walletAddress": "0x5786e89cec635a71abeb8bde4aea5e664137d21c",
-        "toAddress": "0xc587ba228502745e7e13e19dc44af39a28aa004a",
+        "payGasFeeToken": "0x4e..dc",
+        "tokenIn": "0x4e..dc",
+        "tokenOut": "0x95..ce",
+        "walletAddress": "0x57..1c",
+        "toAddress": "0xc5..4a",
         "routeProfile": "BEST_OUTPUT",
         "transactionFeePercent": null,
         "slippage": 5
@@ -354,9 +356,9 @@ permite que se faça também a transferência na mesma funcionalidade; por exemp
     ```
     será executado:  
     + "Create Swap", usando o conteúdo acima, o que implica:  
-        * Uma quantia de entrada de 15.00, na token de entrada(BRZ &mdash; 0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc) na rede de entrada(137 &mdash; Polygon); essa situação foi definida ainda no depósito via PIX;  
-        * A chain de saída é Ethereum(1), tendo como token de saída Shiba Inu(0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce)
-        * A carteira de onde sai o recurso é "0x5786e89cec635a71abeb8bde4aea5e664137d21c"(criada com "salt" zero), e a carteira a receber é "0xc587ba228502745e7e13e19dc44af39a28aa004a"(criada com "salt" 1)
+        * Uma quantia de entrada de 15.00, na token de entrada(BRZ &mdash; 0x4e..dc) na rede de entrada(137 &mdash; Polygon); essa situação foi definida ainda no depósito via PIX;  
+        * A chain de saída é Ethereum(1), tendo como token de saída Shiba Inu(0x95..ce)
+        * A carteira de onde sai o recurso é "0x57..1c"(criada com "salt" zero), e a carteira a receber é "0xc5..4a"(criada com "salt" 1)
         * O valor indicado servirá para a transferência e cobertura de qualquer custo da transação, dada a opção "DEDUCT_FROM_AMOUNT"(a alternativa seria "ADD_TO_AMOUNT", o que implica "amountIn" corresponder ao valor da transferência e toda taxa ser cobrada à parte)
         * Não é estipulado uma porcentagem a remunerar o "tesouro"(uma carteira definida para receber taxas oriundas das transferências), dada a simplicidade da demonstração("transactionFeePercent")
         * A tolerância entre o valor nominal("amountIn") e o efetivamente executado, no caso da presente solicitação, é de 5%("slippage")
@@ -371,13 +373,13 @@ permite que se faça também a transferência na mesma funcionalidade; por exemp
       "estimatedExecutionTime": "2025-10-14T00:57:18.041Z",
       "estimatedCollectedFee": {
                 "collectedFee": "0",
-        "collectedFeeToken": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
+        "collectedFeeToken": "0x4e..dc",
         "collectedFeePercent": "0",
         "notusCollectedFee": "0.03",
         "notusCollectedFeePercent": "0.2"
               },
       "estimatedGasFees": {
-                "payGasFeeToken": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
+                "payGasFeeToken": "0x4e..dc",
         "maxGasFeeToken": "0.01934719714136787",
         "gasFeeTokenAmount": "0.01934719714136787",
         "gasFeeTokenAmountUSD": "0.0035148082855095203772170390169945",
@@ -390,10 +392,10 @@ permite que se faça também a transferência na mesma funcionalidade; por exemp
       "revertReason": null,
       "authorization": null,
       "swapProvider": "RANGO",
-      "tokenIn": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
+      "tokenIn": "0x4e..dc",
       "tokenInPrice": "0.18184",
-      "tokenOut": "0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce",
-      "walletAddress": "0x5786e89cec635a71abeb8bde4aea5e664137d21c",
+      "tokenOut": "0x95..ce",
+      "walletAddress": "0x57..1c",
       "metadata": null
     }
     ```
@@ -408,7 +410,7 @@ permite que se faça também a transferência na mesma funcionalidade; por exemp
           "priceUsd": "0.0000111084",
           "balanceUsd": "2.2850675673227669360374552788",
           "balanceFormatted": "205706.273389756124737807",
-          "address": "0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce",
+          "address": "0x95..ce",
           "name": "Shiba Inu",
           "symbol": "shib",
           "logo": "https://coin-images.coingecko.com/coins/images/11939/large/shiba.png?1696511800",
@@ -429,7 +431,7 @@ permite que se faça também a transferência na mesma funcionalidade; por exemp
           "priceUsd": "0.0000111084",
           "balanceUsd": "2.2850675673227669360374552788",
           "balanceFormatted": "205706.273389756124737807",
-          "address": "0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce",
+          "address": "0x95..ce",
           "name": "Shiba Inu",
           "symbol": "shib",
           "logo": "https://coin-images.coingecko.com/coins/images/11939/large/shiba.png?1696511800",
@@ -444,7 +446,7 @@ permite que se faça também a transferência na mesma funcionalidade; por exemp
       ]
     }
     ```
-1. Na próxima operação, uma transferência simples, o restante do recurso na carteira origem(0x5786e89cec635a71abeb8bde4aea5e664137d21c), em BRZ também será enviado para a carteira "0xc587ba228502745e7e13e19dc44af39a28aa004a"; para realizar a transferência, o endpoint "Transfer"(/api/v1 /crypto/transfer), é usado, através da seguinte chamada:
+1. Na próxima operação, uma transferência simples, o restante do recurso na carteira origem(0x57..1c), em BRZ também será enviado para a carteira "0xc5..4a"; para realizar a transferência, o endpoint "Transfer"(/api/v1 /crypto/transfer), é usado, através da seguinte chamada:
     ```console
     node notus-cli.js transfer transfer_body.json execute
     ```
@@ -454,18 +456,18 @@ permite que se faça também a transferência na mesma funcionalidade; por exemp
       "amount": "12.55",
       "chainId": 137,
       "gasFeePaymentMethod": "DEDUCT_FROM_AMOUNT",
-      "payGasFeeToken": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
-      "token": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
-      "walletAddress": "0x5786e89cec635a71abeb8bde4aea5e664137d21c",
-      "toAddress": "0xc587ba228502745e7e13e19dc44af39a28aa004a",
+      "payGasFeeToken": "0x4e..dc",
+      "token": "0x4e..dc",
+      "walletAddress": "0x57..1c",
+      "toAddress": "0xc5..4a",
       "transactionFeePercent": null
     }
     ```
     será executado:  
     + "Create Transfer", usando o conteúdo acima, o que implica:  
-        * A quantia de 12.55, na token de entrada(BRZ &mdash; 0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc) na rede de entrada(137 &mdash; Polygon); servirá para a transferência e custos associados("DEDUCT_FROM_AMOUNT");  
+        * A quantia de 12.55, na token de entrada(BRZ &mdash; 0x4e..dc) na rede de entrada(137 &mdash; Polygon); servirá para a transferência e custos associados("DEDUCT_FROM_AMOUNT");  
         * Por ser uma transferência, tanto o token(BRZ) quanto a chain de destino(Polygon) são os mesmos;
-        * A carteira de onde sai o recurso é "0x5786e89cec635a71abeb8bde4aea5e664137d21c" e a carteira a receber é "0xc587ba228502745e7e13e19dc44af39a28aa004a"(tal como no exemplo anterior)
+        * A carteira de onde sai o recurso é "0x57..1c" e a carteira a receber é "0xc5..4a"(tal como no exemplo anterior)
         * Não é estipulado uma porcentagem a remunerar o "tesouro"(tal como na operação de swap anterior)
     + A resposta ao comando "Create Transfer", quando bem sucedido, será como a seguir:
     ```json
@@ -482,11 +484,11 @@ permite que se faça também a transferência na mesma funcionalidade; por exemp
           "gasFeeTokenAmountUSD": "0.00208263264759003349561047973209843",
           "maxGasFeeNative": "0.009858853649052191",
           "maxGasFeeToken": "0.011482325863878489",
-          "payGasFeeToken": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc"
+          "payGasFeeToken": "0x4e..dc"
         },
         "estimatedCollectedFee": {
           "collectedFee": "0",
-          "collectedFeeToken": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
+          "collectedFeeToken": "0x4e..dc",
           "collectedFeePercent": "0",
           "notusCollectedFee": "0",
           "notusCollectedFeePercent": "0"
@@ -496,9 +498,9 @@ permite que se faça também a transferência na mesma funcionalidade; por exemp
         "userOperationHash": "0x05278e974139d89ac749473f6a2f4a734f9643b00d56cbac3cf7311634c21e36",
         "revertReason": null,
         "authorization": null,
-        "toAddress": "0xc587ba228502745e7e13e19dc44af39a28aa004a",
-        "walletAddress": "0x5786e89cec635a71abeb8bde4aea5e664137d21c",
-        "token": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
+        "toAddress": "0xc5..4a",
+        "walletAddress": "0x57..1c",
+        "token": "0x4e..dc",
         "metadata": null
       }
     }
@@ -513,7 +515,7 @@ permite que se faça também a transferência na mesma funcionalidade; por exemp
           "priceUsd": "0.1806644495",
           "balanceUsd": "2.2652643931438227808499231945",
           "balanceFormatted": "12.538517674136121511",
-          "address": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
+          "address": "0x4e..dc",
           "name": "Brazilian Digital",
           "symbol": "brz",
           "logo": "https://coin-images.coingecko.com/coins/images/8472/large/MicrosoftTeams-image_%286%29.png?1696508657",
@@ -531,7 +533,7 @@ permite que se faça também a transferência na mesma funcionalidade; por exemp
           "priceUsd": "0.000010308",
           "balanceUsd": "2.120420266101606133797314556",
           "balanceFormatted": "205706.273389756124737807",
-          "address": "0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce",
+          "address": "0x95..ce",
           "name": "Shiba Inu",
           "symbol": "shib",
           "logo": "https://coin-images.coingecko.com/coins/images/11939/large/shiba.png?1696511800",
@@ -552,7 +554,7 @@ permite que se faça também a transferência na mesma funcionalidade; por exemp
           "priceUsd": "0.1806644495",
           "balanceUsd": "2.2652643931438227808499231945",
           "balanceFormatted": "12.538517674136121511",
-          "address": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
+          "address": "0x4e..dc",
           "name": "Brazilian Digital",
           "symbol": "brz",
           "logo": "https://coin-images.coingecko.com/coins/images/8472/large/MicrosoftTeams-image_%286%29.png?1696508657",
@@ -570,7 +572,7 @@ permite que se faça também a transferência na mesma funcionalidade; por exemp
           "priceUsd": "0.000010308",
           "balanceUsd": "2.120420266101606133797314556",
           "balanceFormatted": "205706.273389756124737807",
-          "address": "0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce",
+          "address": "0x95..ce",
           "name": "Shiba Inu",
           "symbol": "shib",
           "logo": "https://coin-images.coingecko.com/coins/images/11939/large/shiba.png?1696511800",
@@ -595,11 +597,11 @@ permite que se faça também a transferência na mesma funcionalidade; por exemp
       "chainIdIn": 1,
       "chainIdOut": 137,
       "gasFeePaymentMethod": "DEDUCT_FROM_AMOUNT",
-      "payGasFeeToken": "0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce",
-      "tokenIn": "0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce",
-      "tokenOut": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
-      "walletAddress": "0xc587ba228502745e7e13e19dc44af39a28aa004a",
-      "toAddress": "0xc587ba228502745e7e13e19dc44af39a28aa004a",
+      "payGasFeeToken": "0x95..ce",
+      "tokenIn": "0x95..ce",
+      "tokenOut": "0x4e..dc",
+      "walletAddress": "0xc5..4a",
+      "toAddress": "0xc5..4a",
       "routeProfile": "BEST_OUTPUT",
       "transactionFeePercent": null,
       "slippage": 5
@@ -616,7 +618,7 @@ permite que se faça também a transferência na mesma funcionalidade; por exemp
           "priceUsd": "0.1807678128",
           "balanceUsd": "3.0682248614027738609067962352",
           "balanceFormatted": "16.973291947706598909",
-          "address": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
+          "address": "0x4e..dc",
           "name": "Brazilian Digital",
           "symbol": "brz",
           "logo": "https://coin-images.coingecko.com/coins/images/8472/large/MicrosoftTeams-image_%286%29.png?1696508657",
@@ -637,7 +639,7 @@ permite que se faça também a transferência na mesma funcionalidade; por exemp
           "priceUsd": "0.1807678128",
           "balanceUsd": "3.0682248614027738609067962352",
           "balanceFormatted": "16.973291947706598909",
-          "address": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
+          "address": "0x4e..dc",
           "name": "Brazilian Digital",
           "symbol": "brz",
           "logo": "https://coin-images.coingecko.com/coins/images/8472/large/MicrosoftTeams-image_%286%29.png?1696508657",
@@ -669,7 +671,7 @@ permite que se faça também a transferência na mesma funcionalidade; por exemp
          "amountToSendInCryptoCurrency": "16.973291947706598909",
          "cryptoCurrencyToSend": "BRZ",
          "transactionFeePercent": null,
-         "walletAddress": "0xc587ba228502745e7e13e19dc44af39a28aa004a"
+         "walletAddress": "0xc5..4a"
      }
     ```
     Tendo sido a transação bem-sucedida, temos a seguinte resposta:
@@ -691,10 +693,5 @@ permite que se faça também a transferência na mesma funcionalidade; por exemp
     E ao executar a ordem, temos o efeito pretendido:
 
     <p align="center">
-    <img src="https://github.com/wbarroz/NotusLabs/blob/main/last_withdrawal.jpeg" alt="preparação do PIX" width="200"/>
+    <img src="https://github.com/wbarroz/NotusLabs/blob/main/last_withdrawal.jpeg" alt="retirada final" width="200"/>
     </p>
-
-
-
-
----
