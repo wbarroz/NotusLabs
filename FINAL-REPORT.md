@@ -278,10 +278,421 @@ O processo de KYC envolve o envio da mensagem acima, seguido pelo envio(em caso 
     npm run deposit -- deposit_body.json execute
     ```  
     e tendo no arquivo `deposit_body.json` o conteúdo do [corpo de mensagem inicial acima mostrado](#fiat_deposit), toda essa sequência de operação é executada automaticamente, com a geração de um arquivo PNG com o QR-Code para a efetuação do depósito via PIX.
+    <p align="center">
     <img src="https://github.com/wbarroz/NotusLabs/blob/main/pix_started.jpg" alt="preparação do PIX" width="200"/>
-    <img src="https://github.com/wbarroz/NotusLabs/blob/main/pix_started.jpg" alt="PIX finalizado" width="200"/>
+    <img src="https://github.com/wbarroz/NotusLabs/blob/main/pix_finished.jpg" alt="PIX finalizado" width="200"/>
+    </p>
 
-    1. Através do endpoint "Get Smart Wallet Portfolio", é possível verificar, no corpo da mensagem de retorno, a carteira destino com os recursos recém-depositados:
+1. Através do endpoint "Get Smart Wallet Portfolio", é possível verificar, no corpo da mensagem de retorno, a carteira destino com os recursos recém-depositados:
+    ```json
+    {
+      "tokens": [
+        {
+          "chainId": 137,
+          "balance": "27550000000000000000",
+          "priceUsd": "0.1817383484",
+          "balanceUsd": "5.00689149842",
+          "balanceFormatted": "27.55",
+          "address": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
+          "name": "Brazilian Digital",
+          "symbol": "brz",
+          "logo": "https://coin-images.coingecko.com/coins/images/8472/large/MicrosoftTeams-image_%286%29.png?1696508657",
+          "decimals": 18,
+          "chain": {
+            "id": 137,
+            "logo": "https://assets.coingecko.com/coins/images/4713/standard/polygon.png?1698233745",
+            "name": "Polygon",
+            "symbol": "POL"
+          }
+        }
+      ],
+      "nfts": [],
+      "portfolio": [
+        {
+          "chainId": 137,
+          "balance": "27550000000000000000",
+          "priceUsd": "0.1817383484",
+          "balanceUsd": "5.00689149842",
+          "balanceFormatted": "27.55",
+          "address": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
+          "name": "Brazilian Digital",
+          "symbol": "brz",
+          "logo": "https://coin-images.coingecko.com/coins/images/8472/large/MicrosoftTeams-image_%286%29.png?1696508657",
+          "decimals": 18,
+          "chain": {
+            "id": 137,
+            "logo": "https://assets.coingecko.com/coins/images/4713/standard/polygon.png?1698233745",
+            "name": "Polygon",
+            "symbol": "POL"
+          }
+        }
+      ]
+    }
+    ```
+
+1. Uma vez havendo saldo numa carteira, pode-se fazer operações de transferência e/ou swap, sendo que essa última operação(endpoint "Create Swap" &mdash; /api/v1/crypto/swap)
+permite que se faça também a transferência na mesma funcionalidade; por exemplo, através do comando:
+    ```console
+    npm run swap -- swap_body.json execute
+    ```
+    e usando o seguinte conteúdo no arquivo `swap_body.json`:
+    ```json
+    {
+        "amountIn": "15.00",
+        "chainIdIn": 137,
+        "chainIdOut": 1,
+        "gasFeePaymentMethod": "DEDUCT_FROM_AMOUNT",
+        "payGasFeeToken": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
+        "tokenIn": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
+        "tokenOut": "0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce",
+        "walletAddress": "0x5786e89cec635a71abeb8bde4aea5e664137d21c",
+        "toAddress": "0xc587ba228502745e7e13e19dc44af39a28aa004a",
+        "routeProfile": "BEST_OUTPUT",
+        "transactionFeePercent": null,
+        "slippage": 5
+    }
+    ```
+    será executado:  
+    + "Create Swap", usando o conteúdo acima, o que implica:  
+        * Uma quantia de entrada de 15.00, na token de entrada(BRZ &mdash; 0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc) na rede de entrada(137 &mdash; Polygon); essa situação foi definida ainda no depósito via PIX;  
+        * A chain de saída é Ethereum(1), tendo como token de saída Shiba Inu(0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce)
+        * A carteira de onde sai o recurso é "0x5786e89cec635a71abeb8bde4aea5e664137d21c"(criada com "salt" zero), e a carteira a receber é "0xc587ba228502745e7e13e19dc44af39a28aa004a"(criada com "salt" 1)
+        * O valor indicado servirá para a transferência e cobertura de qualquer custo da transação, dada a opção "DEDUCT_FROM_AMOUNT"(a alternativa seria "ADD_TO_AMOUNT", o que implica "amountIn" corresponder ao valor da transferência e toda taxa ser cobrada à parte)
+        * Não é estipulado uma porcentagem a remunerar o "tesouro"(uma carteira definida para receber taxas oriundas das transferências), dada a simplicidade da demonstração("transactionFeePercent")
+        * A tolerância entre o valor nominal("amountIn") e o efetivamente executado, no caso da presente solicitação, é de 5%("slippage")
+    + A resposta ao comando "Create Swap" descrito acima será uma sequência de cotações, cada uma na forma:
+    ```json
+    {
+      "amountIn": "15.00",
+      "amountInUSD": "2.7240819056718136665192",
+      "amountOutUSD": "2.2687587677997714",
+      "chainIn": 137,
+      "chainOut": 1,
+      "estimatedExecutionTime": "2025-10-14T00:57:18.041Z",
+      "estimatedCollectedFee": {
+                "collectedFee": "0",
+        "collectedFeeToken": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
+        "collectedFeePercent": "0",
+        "notusCollectedFee": "0.03",
+        "notusCollectedFeePercent": "0.2"
+              },
+      "estimatedGasFees": {
+                "payGasFeeToken": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
+        "maxGasFeeToken": "0.01934719714136787",
+        "gasFeeTokenAmount": "0.01934719714136787",
+        "gasFeeTokenAmountUSD": "0.0035148082855095203772170390169945",
+        "maxGasFeeNative": "0.037931512746807708"
+              },
+      "expiresAt": 1760403439000,
+      "minAmountOut": "193591.231615782554529124",
+      "quoteId": "0x78cf1aec46dbefcddb746ef42e77c2b504752c8571d8b2606802fd71669507e6",
+      "userOperationHash": "0x78cf1aec46dbefcddb746ef42e77c2b504752c8571d8b2606802fd71669507e6",
+      "revertReason": null,
+      "authorization": null,
+      "swapProvider": "RANGO",
+      "tokenIn": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
+      "tokenInPrice": "0.18184",
+      "tokenOut": "0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce",
+      "walletAddress": "0x5786e89cec635a71abeb8bde4aea5e664137d21c",
+      "metadata": null
+    }
+    ```
+    Escolhida a cotação(no caso do comando usado, será sempre a primeira cotação retornada), usa-se o endpoint "Execute User Operation" para a execução do "quoteId" correspondente.
+    Concluída a operação, pode ser verificado o saldo resultante na carteira destino(através do endpoint "Get Smart Wallet Portfolio"):
+    ```json
+    {
+      "tokens": [
+        {
+          "chainId": 1,
+          "balance": "205706273389756124737807",
+          "priceUsd": "0.0000111084",
+          "balanceUsd": "2.2850675673227669360374552788",
+          "balanceFormatted": "205706.273389756124737807",
+          "address": "0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce",
+          "name": "Shiba Inu",
+          "symbol": "shib",
+          "logo": "https://coin-images.coingecko.com/coins/images/11939/large/shiba.png?1696511800",
+          "decimals": 18,
+          "chain": {
+            "id": 1,
+            "logo": "https://assets.coingecko.com/coins/images/279/large/ethereum.png?1696501628",
+            "name": "Ethereum",
+            "symbol": "ETH"
+          }
+        }
+      ],
+      "nfts": [],
+      "portfolio": [
+        {
+          "chainId": 1,
+          "balance": "205706273389756124737807",
+          "priceUsd": "0.0000111084",
+          "balanceUsd": "2.2850675673227669360374552788",
+          "balanceFormatted": "205706.273389756124737807",
+          "address": "0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce",
+          "name": "Shiba Inu",
+          "symbol": "shib",
+          "logo": "https://coin-images.coingecko.com/coins/images/11939/large/shiba.png?1696511800",
+          "decimals": 18,
+          "chain": {
+            "id": 1,
+            "logo": "https://assets.coingecko.com/coins/images/279/large/ethereum.png?1696501628",
+            "name": "Ethereum",
+            "symbol": "ETH"
+          }
+        }
+      ]
+    }
+    ```
+1. Na próxima operação, uma transferência simples, o restante do recurso na carteira origem(0x5786e89cec635a71abeb8bde4aea5e664137d21c), em BRZ também será enviado para a carteira "0xc587ba228502745e7e13e19dc44af39a28aa004a"; para realizar a transferência, o endpoint "Transfer"(/api/v1 /crypto/transfer), é usado, através da seguinte chamada:
+    ```console
+    node notus-cli.js transfer transfer_body.json execute
+    ```
+    usando como corpo da mensagem(conteúdo do arquivo "transfer_body.json") o seguinte:
+    ```json
+    {
+      "amount": "12.55",
+      "chainId": 137,
+      "gasFeePaymentMethod": "DEDUCT_FROM_AMOUNT",
+      "payGasFeeToken": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
+      "token": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
+      "walletAddress": "0x5786e89cec635a71abeb8bde4aea5e664137d21c",
+      "toAddress": "0xc587ba228502745e7e13e19dc44af39a28aa004a",
+      "transactionFeePercent": null
+    }
+    ```
+    será executado:  
+    + "Create Transfer", usando o conteúdo acima, o que implica:  
+        * A quantia de 12.55, na token de entrada(BRZ &mdash; 0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc) na rede de entrada(137 &mdash; Polygon); servirá para a transferência e custos associados("DEDUCT_FROM_AMOUNT");  
+        * Por ser uma transferência, tanto o token(BRZ) quanto a chain de destino(Polygon) são os mesmos;
+        * A carteira de onde sai o recurso é "0x5786e89cec635a71abeb8bde4aea5e664137d21c" e a carteira a receber é "0xc587ba228502745e7e13e19dc44af39a28aa004a"(tal como no exemplo anterior)
+        * Não é estipulado uma porcentagem a remunerar o "tesouro"(tal como na operação de swap anterior)
+    + A resposta ao comando "Create Transfer", quando bem sucedido, será como a seguir:
+    ```json
+    {
+      "transfer": {
+        "amountToBeReceived": "12.538517674136121511",
+        "amountToBeReceivedUSD": "2.27420180981695923500438952026790157",
+        "amountToSend": "12.55",
+        "amountToSendUSD": "2.2762844424645492685",
+        "chain": 137,
+        "estimatedExecutionTime": "2025-10-14T12:26:04.881Z",
+        "estimatedGasFees": {
+          "gasFeeTokenAmount": "0.011482325863878489",
+          "gasFeeTokenAmountUSD": "0.00208263264759003349561047973209843",
+          "maxGasFeeNative": "0.009858853649052191",
+          "maxGasFeeToken": "0.011482325863878489",
+          "payGasFeeToken": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc"
+        },
+        "estimatedCollectedFee": {
+          "collectedFee": "0",
+          "collectedFeeToken": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
+          "collectedFeePercent": "0",
+          "notusCollectedFee": "0",
+          "notusCollectedFeePercent": "0"
+        },
+        "expiresAt": 1760444810000,
+        "quoteId": "0x05278e974139d89ac749473f6a2f4a734f9643b00d56cbac3cf7311634c21e36",
+        "userOperationHash": "0x05278e974139d89ac749473f6a2f4a734f9643b00d56cbac3cf7311634c21e36",
+        "revertReason": null,
+        "authorization": null,
+        "toAddress": "0xc587ba228502745e7e13e19dc44af39a28aa004a",
+        "walletAddress": "0x5786e89cec635a71abeb8bde4aea5e664137d21c",
+        "token": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
+        "metadata": null
+      }
+    }
+    ```
+    Aqui veem-se o valor efetivamente transferido("amountToBeReceived"), as "fees" recolhidas, tanto no token usado mas também em USD, a validade da cotação, entre outros; a seguir, procede-se à execução da transferência via "Execute User Operation", usando-se a informação da cotação; a execução do comando acima descrito executa automaticamente toda essa sequência. Tendo sido feita com sucesso, a transferência pode ser verificada no portfólio da carteira destino(através do endpoint "Get Smart Wallet Portfolio"), agora indicando a presença de ambos os tokens:
+    ```json
+    {
+      "tokens": [
+        {
+          "chainId": 137,
+          "balance": "12538517674136121511",
+          "priceUsd": "0.1806644495",
+          "balanceUsd": "2.2652643931438227808499231945",
+          "balanceFormatted": "12.538517674136121511",
+          "address": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
+          "name": "Brazilian Digital",
+          "symbol": "brz",
+          "logo": "https://coin-images.coingecko.com/coins/images/8472/large/MicrosoftTeams-image_%286%29.png?1696508657",
+          "decimals": 18,
+          "chain": {
+            "id": 137,
+            "logo": "https://assets.coingecko.com/coins/images/4713/standard/polygon.png?1698233745",
+            "name": "Polygon",
+            "symbol": "POL"
+          }
+        },
+        {
+          "chainId": 1,
+          "balance": "205706273389756124737807",
+          "priceUsd": "0.000010308",
+          "balanceUsd": "2.120420266101606133797314556",
+          "balanceFormatted": "205706.273389756124737807",
+          "address": "0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce",
+          "name": "Shiba Inu",
+          "symbol": "shib",
+          "logo": "https://coin-images.coingecko.com/coins/images/11939/large/shiba.png?1696511800",
+          "decimals": 18,
+          "chain": {
+            "id": 1,
+            "logo": "https://assets.coingecko.com/coins/images/279/large/ethereum.png?1696501628",
+            "name": "Ethereum",
+            "symbol": "ETH"
+          }
+        }
+      ],
+      "nfts": [],
+      "portfolio": [
+        {
+          "chainId": 137,
+          "balance": "12538517674136121511",
+          "priceUsd": "0.1806644495",
+          "balanceUsd": "2.2652643931438227808499231945",
+          "balanceFormatted": "12.538517674136121511",
+          "address": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
+          "name": "Brazilian Digital",
+          "symbol": "brz",
+          "logo": "https://coin-images.coingecko.com/coins/images/8472/large/MicrosoftTeams-image_%286%29.png?1696508657",
+          "decimals": 18,
+          "chain": {
+            "id": 137,
+            "logo": "https://assets.coingecko.com/coins/images/4713/standard/polygon.png?1698233745",
+            "name": "Polygon",
+            "symbol": "POL"
+          }
+        },
+        {
+          "chainId": 1,
+          "balance": "205706273389756124737807",
+          "priceUsd": "0.000010308",
+          "balanceUsd": "2.120420266101606133797314556",
+          "balanceFormatted": "205706.273389756124737807",
+          "address": "0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce",
+          "name": "Shiba Inu",
+          "symbol": "shib",
+          "logo": "https://coin-images.coingecko.com/coins/images/11939/large/shiba.png?1696511800",
+          "decimals": 18,
+          "chain": {
+            "id": 1,
+            "logo": "https://assets.coingecko.com/coins/images/279/large/ethereum.png?1696501628",
+            "name": "Ethereum",
+            "symbol": "ETH"
+          }
+        }
+      ]
+    }
+1. Como penúltimo passo, vamos converter na carteira destino o montante em Shiba Inu para BRZ, usando:
+    ```console
+    npm run swap -- swap_body.json execute
+    ```
+    tendo no arquivo "swap_body.json" o seguinte:
+    ```json
+     {
+      "amountIn": "205706.273389756124737807",
+      "chainIdIn": 1,
+      "chainIdOut": 137,
+      "gasFeePaymentMethod": "DEDUCT_FROM_AMOUNT",
+      "payGasFeeToken": "0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce",
+      "tokenIn": "0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce",
+      "tokenOut": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
+      "walletAddress": "0xc587ba228502745e7e13e19dc44af39a28aa004a",
+      "toAddress": "0xc587ba228502745e7e13e19dc44af39a28aa004a",
+      "routeProfile": "BEST_OUTPUT",
+      "transactionFeePercent": null,
+      "slippage": 5
+    }
+    ```
+    Uma nova consulta ao portfólio o mostra unificado em BRZ:
+
+    ```json
+    {
+      "tokens": [
+        {
+          "chainId": 137,
+          "balance": "16973291947706598909",
+          "priceUsd": "0.1807678128",
+          "balanceUsd": "3.0682248614027738609067962352",
+          "balanceFormatted": "16.973291947706598909",
+          "address": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
+          "name": "Brazilian Digital",
+          "symbol": "brz",
+          "logo": "https://coin-images.coingecko.com/coins/images/8472/large/MicrosoftTeams-image_%286%29.png?1696508657",
+          "decimals": 18,
+          "chain": {
+            "id": 137,
+            "logo": "https://assets.coingecko.com/coins/images/4713/standard/polygon.png?1698233745",
+            "name": "Polygon",
+            "symbol": "POL"
+          }
+        }
+      ],
+      "nfts": [],
+      "portfolio": [
+        {
+          "chainId": 137,
+          "balance": "16973291947706598909",
+          "priceUsd": "0.1807678128",
+          "balanceUsd": "3.0682248614027738609067962352",
+          "balanceFormatted": "16.973291947706598909",
+          "address": "0x4ed141110f6eeeaba9a1df36d8c26f684d2475dc",
+          "name": "Brazilian Digital",
+          "symbol": "brz",
+          "logo": "https://coin-images.coingecko.com/coins/images/8472/large/MicrosoftTeams-image_%286%29.png?1696508657",
+          "decimals": 18,
+          "chain": {
+            "id": 137,
+            "logo": "https://assets.coingecko.com/coins/images/4713/standard/polygon.png?1698233745",
+            "name": "Polygon",
+            "symbol": "POL"
+          }
+        }
+      ]
+    }
+    
+    ```
+1. Como último passo, é feita o "off-ramping", ou seja, o saque fiduciário do valor total, usando o endpoint "Create Fiat Withdrawal Quote/Order", através do comando:
+    ```console
+    npm run withdraw -- withdraw_body.json execute
+    ```
+    tendo no arquivo "swap_body.json" o seguinte:
+    ```json
+     {
+         "individualId": "ffbdb44e-929d-4262-b2e6-3de0849fba8d",
+         "chainId": 137,
+         "paymentMethodToReceiveDetails": {
+             "type": "PIX",
+             "pixKey": "+5511960277847"
+         },
+         "amountToSendInCryptoCurrency": "16.973291947706598909",
+         "cryptoCurrencyToSend": "BRZ",
+         "transactionFeePercent": null,
+         "walletAddress": "0xc587ba228502745e7e13e19dc44af39a28aa004a"
+     }
+    ```
+    Tendo sido a transação bem-sucedida, temos a seguinte resposta:
+    ```json
+    {
+      "withdrawOrder": {
+        "userOperationHash": "0x5419cf8dd248e0f2554d0e5d93bf01e4354a80c98fefbb39ff6a09a19e4d1f52",
+        "userOpHash": "0x5419cf8dd248e0f2554d0e5d93bf01e4354a80c98fefbb39ff6a09a19e4d1f52",
+        "authorization": null,
+        "orderId": "f7a8d267-2b0d-4a5a-badd-056656a4bbd3",
+        "amountToSendInCryptoCurrency": "16.973291947706598909",
+        "amountToReceiveInFiatCurrency": "16.93",
+        "transactionFeeAmountInCryptoCurrency": "0",
+        "estimatedGasFeeAmountInCryptoCurrency": "0.043291947706598909",
+        "expiresAt": "2025-10-14T14:33:27.496Z"
+      }
+    }
+    ```
+    E ao executar a ordem, temos o efeito pretendido:
+
+    <p align="center">
+    <img src="https://github.com/wbarroz/NotusLabs/blob/main/last_withdrawal.jpeg" alt="preparação do PIX" width="200"/>
+    </p>
 
 
 

@@ -15,14 +15,20 @@ if (!API_KEY || !PRIVATE_KEY) {
 }
 
 const account = privateKeyToAccount(PRIVATE_KEY)
-console.log(`✅ Conta carregada: ${account.address}`)
+console.log(`✅ Conta carregada (EOA): ${account.address}`)
 
 // === Endpoints ===
 const ENDPOINTS = {
+	// Smart wallets
+	registerWallet: '/wallets/register',
+
+	// Fiat
 	depositQuote: '/fiat/deposit/quote',
 	depositOrder: '/fiat/deposit',
 	withdrawQuote: '/fiat/withdraw/quote',
 	withdrawOrder: '/fiat/withdraw',
+
+	// Crypto
 	transfer: '/crypto/transfer',
 	swap: '/crypto/swap',
 	execute: '/crypto/execute-user-op',
@@ -114,16 +120,65 @@ async function main() {
 
 	if (!operation || !jsonFile) {
 		console.error('Uso: node notus-cli.js <operation> <arquivo.json> [execute]')
-		console.error('Operações suportadas: deposit | withdraw | transfer | swap')
+		console.error('Operações suportadas: register | deposit | withdraw | transfer | swap')
 		process.exit(1)
 	}
 
 	const shouldExecute = maybeExecute === 'execute'
 	const requestBody = await loadRequestBody(jsonFile)
 
+	// === REGISTRO DE SMART WALLET ===
+	if (operation === 'register') {
+		// prepare body: externallyOwnedAccount (fallback para account.address) e factory (obrigatório)
+		const externallyOwnedAccount = requestBody.externallyOwnedAccount || account.address
+		const factory = requestBody.factory
+		if (!factory) {
+			console.error('❌ ERRO: "factory" é obrigatório no arquivo JSON para registrar a wallet.')
+			return
+		}
+
+		const registerBody = {
+			externallyOwnedAccount,
+			factory,
+		}
+
+		// opcional: incluir salt, eip7702, metadata se existirem no requestBody
+		if (requestBody.salt !== undefined) registerBody.salt = requestBody.salt
+		if (requestBody.eip7702 !== undefined) registerBody.eip7702 = requestBody.eip7702
+		if (requestBody.metadata !== undefined) registerBody.metadata = requestBody.metadata
+
+		const resp = await postToNotus(ENDPOINTS.registerWallet, registerBody)
+		if (!resp) return
+
+		// Se a API retornar 'wallet', mostramos; se retornar um userOperationHash (raro), permitimos execute
+		const wallet = resp.wallet
+		if (wallet) {
+			console.log('\n🏷️ Wallet registrada / retornada pelo serviço:')
+			console.log(JSON.stringify(wallet, null, 2))
+		}
+
+		// Se houver userOperationHash (algumas integrações podem retornar), trate a execução
+		const userOpHash =
+			resp.userOperationHash ||
+			resp.userOpHash ||
+			wallet?.userOperationHash ||
+			wallet?.userOpHash ||
+			null
+
+		if (userOpHash && shouldExecute) {
+			console.log(`\n🔑 userOperationHash obtido: ${userOpHash}`)
+			console.log('🚀 Executando operação de registro (execute-user-op)...')
+			await signAndExecute(userOpHash)
+		} else if (userOpHash) {
+			console.log('\n💰 Registro cotado — adicione "execute" para efetivar (se aplicável).')
+		} else {
+			console.log('\n✅ Registro concluído (sem execução adicional necessária).')
+		}
+		return
+	}
+
 	// === DEPÓSITO FIAT ===
 	if (operation === 'deposit') {
-		// 1️⃣ Cotação
 		const quoteResponse = await postToNotus(ENDPOINTS.depositQuote, requestBody)
 		const quoteId = quoteResponse?.depositQuote?.quoteId
 
@@ -138,7 +193,6 @@ async function main() {
 			return
 		}
 
-		// 2️⃣ Criação da ordem
 		const walletAddress = requestBody.walletAddress
 		if (!walletAddress) {
 			console.error('❌ ERRO: walletAddress é obrigatório no arquivo JSON para depósito.')
@@ -148,24 +202,22 @@ async function main() {
 		const orderBody = { quoteId, walletAddress }
 		const orderResponse = await postToNotus(ENDPOINTS.depositOrder, orderBody)
 		const depositOrder = orderResponse?.depositOrder
-
 		if (!depositOrder) {
 			console.warn('⚠️ Resposta inválida ao criar ordem de depósito.')
 			return
 		}
 
-		console.log('\n📦 Resposta da criação da ordem (depositOrder):')
-		console.log(JSON.stringify(depositOrder, null, 2))
-
-		// 💾 Gerar imagem a partir de base64QrCode
-		const base64QrCode = depositOrder.base64QrCode ||
+		// busca base64QrCode em vários possíveis caminhos
+		const base64QrCode =
+			depositOrder.base64QrCode ||
 			depositOrder.paymentMethodToSendDetails?.base64QrCode ||
 			depositOrder.paymentInfo?.base64QrCode
+
 		if (base64QrCode) {
 			const fileName = `deposit_${quoteId}.png`
 			await saveBase64Image(base64QrCode, fileName)
 		} else {
-			console.warn('⚠️ Nenhum campo base64QrCode encontrado na resposta.')
+			console.warn('⚠️ Nenhum campo base64QrCode encontrado na resposta (nem em paymentMethodToSendDetails).')
 		}
 
 		console.log('\n✅ Depósito criado com sucesso! QR Code salvo (se disponível).')

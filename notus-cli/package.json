@@ -9,7 +9,8 @@
 		"deposit": "node notus-cli.js deposit",
 		"withdraw": "node notus-cli.js withdraw",
 		"transfer": "node notus-cli.js transfer",
-		"swap": "node notus-cli.js swap"
+		"swap": "node notus-cli.js swap",
+		"register": "node notus-cli.js register"
 	},
 	"keywords": [
 		"notus",
