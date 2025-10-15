@@ -30,59 +30,34 @@ O processo de KYC da plataforma resume-se a:
 
 **2. Qual abordagem você vai usar?**
 
-Seguindo rigorosamente a documentação, a partir da seção "KYC Quickstart":
-a. Criar sessão de verificação, com o endpoint:  
-`POST kyc/individual-verification-sessions/standard`
-
-b. Envio de Documento(s):
-A resposta ao endpoint anterior contém informação para o upload do(s) arquivo(s) em um S3 da AWS:
-- Foto da frente("Front Document"): para toda opção de documento("PASSPORT","DRIVERS_LICENSE" ou "IDENTITY_CARD")
-- Foto do verso(Back Document): documentos com verso("DRIVERS_LICENSE" ou "IDENTITY_CARD")
-Um cuidado extra é o de que sejam obtidas fotos de boa qualidade, não imagens escaneadas ou digitalizações; outro detalhe é que o link "dura" só 15 minutos
-
-c. Finalização
-Após o upload da(s) foto(s) do documento, o processo de verificação propriamente dito é disparado pelo endpoint:
-`POST /kyc/individual-verification-sessions/standard/:sessionId/process`
-
-d. Check Status
-...e o status da verificação pode ser consultado em:  
-`GET /kyc/individual-verification-sessions/standard/:sessionId`
-
-O status da verificação poderá ser:
-- "PENDING": Sessão criada, falta realizar upload
-- "VERIFYING": Documentos em análise pelo sistema
-- "COMPLETED": Verificação approvada, sucesso
-- "FAILED":	Verificação rejeitada, ou erro durante processamento
-- "EXPIRED": Sessão expirada
+Seguir rigorosamente a documentação, a partir da seção "Getting Started"
 
 ---
 
-**3. Há algo que precisa ser configurado antes de começar?**  
-Definido o ponto de partida, são explícitos os seguintes requisitos p/ operação:  
-* Acesso ao Dashboard -- Gentilmente cedido pela NotusLabs ✅;  
-* Organização criada -- Conforme documentação ✅;  
-* Criação de Projeto -- Conforme documentação ✅;  
-* Uso(criação?) da chave da API(criada automaticamente com o Projeto) ✅;  
+**3. Há algo que precisa ser configurado antes de começar?**
+Definido o ponto de partida, são explícitos os seguintes requisitos p/ operação:
+    * Acesso ao Dashboard -- Gentilmente cedido pela NotusLabs ✅;
+    * Organização criada -- Conforme documentação ✅;
+    * Criação de Projeto -- Conforme documentação ✅;
+    * Uso(criação?) da chave da API(criada automaticamente com o Projeto) ✅;
+    * Configuração de taxas e endereço -- a ser definido na criação da carteira;
     
 
 ---
 
 **4. Você conseguiu atingir o objetivo da sessão?**
 
-* [ ] Sim
-* [X] Não. Se **não**, explique o que impediu.
-
-Não foi possível a finalização do processo, uma vez que para as execuções de on/off ramping dependem do "individualId", obtido via KYC
+* [X] Sim
+* [ ] Não. Se **não**, explique o que impediu.
 
 ---
 
-**5. Problemas encontrados**  
-O processo de verificação é relativamente simples, porém:  
-- A resposta obtida quando da primeira chamada de API("Criação de sessão"), a ser usado no passo seguinte("Envio de Documentos") difere da documentação;
-- No caso de se usar "PASSPORT" na sessão de verificação, o sistema rejeita os caracteres alfabéticos presentes no número de passaporte, impedindo portanto seu uso;
-- De acordo com orientação fornecida pelo suporte, o número de documento efetivamente aceito é o de CPF, porém há dúvidas se mesmo os documentos de identificação recentes possuem o CPF 
-- A resposta de falha não inclue o motivo da rejeição do envio, tornando obrigatória a consulta ao suporte
-- Embora todas as condições fossem satisfeitas, não houve sucesso nas tentativas de se fazer a verificação de identidade, tendo o sistema rejeitado a documentação imediatamente após a solicitação
+**5. Problemas encontrados**
+* Ao se seguir o link indicado para criação de carteiras(smart wallet) na seção "Getting Started", é aberto o ítem "Web3Auth" da seção "Authentication", que pode ser lógico mas é confuso; seguida pois a ordem posicional(apenas) de começar por criar a conta("Create an account");
+* O link para criação da conta("Create an account") leva à seção "Getting started", que é lógico também mas poderia ser mais claro(a documentação deveria trazer um fluxo padrão, conveniente para iniciantes(ainda que não ótimo p/ avançados)
+* Do ponto de vista do iniciante, ainda, iniciar passando pelo "Light Account"(o que só é evidente após tentativa e erro) faz muito mais sentido, uma vez que várias características e vantagens da abordagem NotusLabs ficam mais claras
+* Para criação "pura" da carteira(sem login social) foi necessária a criação de um par chave pública/privada na "mão", tendo sido adotada Foundry(cast wallet new); também necessária transferência via aplicativo "Chainless"(fundos gentilmente concedidos pela NotusLabs) para "preparar" a smart wallet
+* Durante atualizações do repositório, um arquivo contendo a chave primária for "upado", comprometendo as primeiras carteiras criadas por vibe coding
 
 ---
 
