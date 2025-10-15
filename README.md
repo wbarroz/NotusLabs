@@ -17,11 +17,12 @@
 `https://github.com/wbarroz/NotusLabs`
 
 **Link do post público:**
+`https://www.linkedin.com/posts/wilson-pereira-barros_github-wbarroznotuslabs-pesquisa-dx-notus-activity-7384270335858180096-Zcy4?utm_source=share&utm_medium=member_desktop&rcm=ACoAAAQoLfYBUhP6NWZKfdPt9Ay0yNW4pNajLd4`
 
 
 **Data de iní­cio:** 26/09/2025
 
-**Data de conclusão:** 10/10/2025
+**Data de conclusão:** 15/10/2025
 
 ---
 
@@ -690,3 +691,8 @@ permite que se faça também a transferência na mesma funcionalidade; por exemp
     <p align="center">
     <img src="https://github.com/wbarroz/NotusLabs/blob/main/last_withdrawal.jpeg" alt="retirada final" width="200"/>
     </p>
+    
+### **11. Conclusão, Agradecimentos**
+Essa foi uma oportunidade única em que podemos utilizar uma tecnologia que permite realizar operações WEB3 sofisticadas sem o uso de smart contracts, com um alto nível de abstração e envolvendo transações on & off ramping, tudo de forma *MUITO FÁCIL* 😃 !!!  
+#### Muito obrigado, [NearX](https://nearx.com.br/) & [NotusLabs](https://notus.team/), por essa experiência, revolucionária e disruptiva.
+
